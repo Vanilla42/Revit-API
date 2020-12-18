@@ -1,0 +1,119 @@
+<Workspace Version="1.3.4.6666" X="-1556.77432191248" Y="-758.494854737386" zoom="0.885087437545139" ScaleFactor="1" Name="Home" Description="" RunType="Manual" RunPeriod="1000" HasRunWithoutCrash="True">
+  <NamespaceResolutionMap />
+  <Elements>
+    <PythonNodeModels.PythonNode guid="16a28f61-e8dc-48df-814e-dc1f1b293680" type="PythonNodeModels.PythonNode" nickname="Python Script" x="2106.98784930497" y="1218.63187365691" isVisible="true" isUpstreamVisible="true" lacing="Disabled" isSelectedInput="False" IsFrozen="false" isPinned="false" inputcount="4">
+      <PortInfo index="0" default="False" />
+      <PortInfo index="1" default="False" />
+      <PortInfo index="2" default="False" />
+      <PortInfo index="3" default="False" />
+      <Script>import clr
+
+clr.AddReference("RevitServices")
+import RevitServices
+from RevitServices.Persistence import DocumentManager
+from RevitServices.Transactions import TransactionManager
+
+clr.AddReference("RevitAPI")
+import Autodesk
+from Autodesk.Revit.DB import *
+
+doc = DocumentManager.Instance.CurrentDBDocument
+view = doc.ActiveView
+view_id = doc.ActiveView.Id
+
+condition_switch = IN[0]
+condition_align = IN[1]
+condition_side = IN[2]
+condition_side_2 = IN[3]
+
+levels = FilteredElementCollector(doc, view_id).OfCategory(BuiltInCategory.OST_Levels).ToElements()
+
+extent_mode = DatumExtentType.ViewSpecific
+
+TransactionManager.Instance.EnsureInTransaction(doc)
+
+if levels:
+	curve = levels[0].GetCurvesInView(extent_mode, view)[0]
+	curve_1_x = curve.GetEndPoint(0).X
+	curve_1_y = curve.GetEndPoint(0).Y
+	curve_2_x = curve.GetEndPoint(1).X
+	curve_2_y = curve.GetEndPoint(1).Y
+
+count = 0
+for i in levels:
+	if condition_switch:
+		i.SetDatumExtentType(DatumEnds.End0, view, extent_mode)
+		i.SetDatumExtentType(DatumEnds.End1, view, extent_mode)
+		count += 1
+	else:
+		pass
+		
+	if condition_align:
+		#  Get a line of the current level
+		curve_current = i.GetCurvesInView(extent_mode, view)[0]
+		#  Get two points of the line
+		curve_current_z_1 = curve_current.GetEndPoint(0).Z
+		curve_current_z_2 = curve_current.GetEndPoint(1).Z
+		#  New coordinates with X changed
+		coo_new_1 = XYZ(curve_1_x, curve_1_y, curve_current_z_1)
+		coo_new_2 = XYZ(curve_2_x, curve_2_y, curve_current_z_2)
+		curve_new = Line.CreateBound(coo_new_1, coo_new_2)
+		
+		i.SetCurveInView(extent_mode, view, curve_new)
+	else:
+		pass
+		
+	if not condition_side:
+		i.HideBubbleInView(DatumEnds.End0, view)
+	else:
+		i.ShowBubbleInView(DatumEnds.End0, view)
+	if not condition_side_2:
+		i.HideBubbleInView(DatumEnds.End1, view)
+	else:
+		i.ShowBubbleInView(DatumEnds.End1, view)
+
+TransactionManager.Instance.TransactionTaskDone()
+
+#  Output
+text = str(count)
+if condition_switch:
+	text += " of levels extents were switched to 2D."
+if condition_align:
+	text += " Levels ends aligned."
+if condition_side or condition_side_2:
+	pass
+else:
+	text += " levels found."
+
+OUT = text</Script>
+    </PythonNodeModels.PythonNode>
+    <CoreNodeModels.Watch guid="c757b78c-9e80-4692-9aa8-c23f36ea72fe" type="CoreNodeModels.Watch" nickname="Result" x="2293.59721536363" y="1217.89355934988" isVisible="true" isUpstreamVisible="true" lacing="Disabled" isSelectedInput="False" IsFrozen="false" isPinned="false">
+      <PortInfo index="0" default="False" />
+    </CoreNodeModels.Watch>
+    <CoreNodeModels.Input.BoolSelector guid="0e6a951f-6928-458f-96a1-bef32dff1448" type="CoreNodeModels.Input.BoolSelector" nickname="Switch to 2D" x="1856.76343668006" y="1221.17748209457" isVisible="true" isUpstreamVisible="true" lacing="Disabled" isSelectedInput="True" IsFrozen="false" isPinned="false">
+      <System.Boolean>True</System.Boolean>
+    </CoreNodeModels.Input.BoolSelector>
+    <CoreNodeModels.Input.BoolSelector guid="1e619f6b-989a-440b-93e6-a9caf49c98d8" type="CoreNodeModels.Input.BoolSelector" nickname="Align Ends" x="1856.76343668006" y="1287.98153906714" isVisible="true" isUpstreamVisible="true" lacing="Disabled" isSelectedInput="True" IsFrozen="false" isPinned="false">
+      <System.Boolean>True</System.Boolean>
+    </CoreNodeModels.Input.BoolSelector>
+    <CoreNodeModels.Input.BoolSelector guid="dcd7c5a3-2e16-4d4b-b819-cff94585109f" type="CoreNodeModels.Input.BoolSelector" nickname="Tags On Side 1" x="1856.76343668006" y="1356.76987495969" isVisible="true" isUpstreamVisible="true" lacing="Disabled" isSelectedInput="True" IsFrozen="false" isPinned="false">
+      <System.Boolean>False</System.Boolean>
+    </CoreNodeModels.Input.BoolSelector>
+    <CoreNodeModels.Input.BoolSelector guid="0066cbdf-8126-405b-843a-5720e3631373" type="CoreNodeModels.Input.BoolSelector" nickname="Tags On Side 2" x="1856.76343668006" y="1427.50829178936" isVisible="true" isUpstreamVisible="true" lacing="Disabled" isSelectedInput="True" IsFrozen="false" isPinned="false">
+      <System.Boolean>False</System.Boolean>
+    </CoreNodeModels.Input.BoolSelector>
+  </Elements>
+  <Connectors>
+    <Dynamo.Graph.Connectors.ConnectorModel start="16a28f61-e8dc-48df-814e-dc1f1b293680" start_index="0" end="c757b78c-9e80-4692-9aa8-c23f36ea72fe" end_index="0" portType="0" />
+    <Dynamo.Graph.Connectors.ConnectorModel start="0e6a951f-6928-458f-96a1-bef32dff1448" start_index="0" end="16a28f61-e8dc-48df-814e-dc1f1b293680" end_index="0" portType="0" />
+    <Dynamo.Graph.Connectors.ConnectorModel start="1e619f6b-989a-440b-93e6-a9caf49c98d8" start_index="0" end="16a28f61-e8dc-48df-814e-dc1f1b293680" end_index="1" portType="0" />
+    <Dynamo.Graph.Connectors.ConnectorModel start="dcd7c5a3-2e16-4d4b-b819-cff94585109f" start_index="0" end="16a28f61-e8dc-48df-814e-dc1f1b293680" end_index="2" portType="0" />
+    <Dynamo.Graph.Connectors.ConnectorModel start="0066cbdf-8126-405b-843a-5720e3631373" start_index="0" end="16a28f61-e8dc-48df-814e-dc1f1b293680" end_index="3" portType="0" />
+  </Connectors>
+  <Notes />
+  <Annotations />
+  <Presets />
+  <Cameras>
+    <Camera Name="Background Preview" eyeX="-17" eyeY="24" eyeZ="50" lookX="12" lookY="-13" lookZ="-58" upX="0" upY="1" upZ="0" />
+  </Cameras>
+</Workspace>

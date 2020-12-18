@@ -1,0 +1,136 @@
+<Workspace Version="1.3.4.6666" X="-185.218186081085" Y="-34.1632469457797" zoom="1.130842140625" ScaleFactor="1" Name="Home" Description="" RunType="Manual" RunPeriod="1000" HasRunWithoutCrash="False">
+  <NamespaceResolutionMap />
+  <Elements>
+    <CoreNodeModels.Watch guid="befa480a-ac7f-4d45-9fad-31f5f3a62fde" type="CoreNodeModels.Watch" nickname="Result" x="863.5" y="404" isVisible="true" isUpstreamVisible="true" lacing="Disabled" isSelectedInput="False" IsFrozen="false" isPinned="false">
+      <PortInfo index="0" default="False" />
+    </CoreNodeModels.Watch>
+    <CoreNodeModels.Input.BoolSelector guid="316141b3-01dc-4726-882e-34e44e07c2b4" type="CoreNodeModels.Input.BoolSelector" nickname="Restart" x="489.108669559166" y="402.994923515681" isVisible="true" isUpstreamVisible="true" lacing="Disabled" isSelectedInput="False" IsFrozen="false" isPinned="false">
+      <System.Boolean>False</System.Boolean>
+    </CoreNodeModels.Input.BoolSelector>
+    <PythonNodeModels.PythonNode guid="07154a56-471b-47e8-8788-9ef0cf679ffc" type="PythonNodeModels.PythonNode" nickname="Check" x="676.706743862362" y="402.661175354424" isVisible="true" isUpstreamVisible="true" lacing="Disabled" isSelectedInput="False" IsFrozen="false" isPinned="false" inputcount="1">
+      <PortInfo index="0" default="False" />
+      <Script>import clr
+clr.AddReference("RevitNodes")
+clr.AddReference("RevitServices")
+import RevitServices
+from RevitServices.Persistence import DocumentManager
+from RevitServices.Transactions import TransactionManager
+
+clr.AddReference("RevitAPI")
+import Autodesk
+from Autodesk.Revit.DB import *
+
+from Autodesk.Revit.ApplicationServices import Application
+
+clr.AddReference("RevitAPIUI")
+from Autodesk.Revit.UI.Selection import ISelectionFilter
+from Autodesk.Revit.UI.Selection import ObjectType
+
+clr.AddReference("System")
+from System.Collections.Generic import List
+
+from Autodesk.Revit.Exceptions import ArgumentException
+
+doc = DocumentManager.Instance.CurrentDBDocument
+uidoc = DocumentManager.Instance.CurrentUIApplication.ActiveUIDocument
+view = doc.ActiveView
+app = doc.Application
+
+
+condition = IN[0]
+tolerance = Application.AngleTolerance.GetValue(app) / 100 #  0.001 grad
+color = Color(255, 127, 39)
+
+
+class SelectionFilter(ISelectionFilter):
+    def __init__(self, category_name):
+        self.category_name = category_name
+    def AllowElement(self, e):
+        if e.Category.Name == self.category_name:
+            return True
+        else:
+            return False
+
+
+ref_id = uidoc.Selection.PickObject(ObjectType.Element, SelectionFilter("Reference Planes"), "Select Reference Plane").ElementId # Select ref plane
+ref = doc.GetElement(ref_id)
+
+ViewId = doc.ActiveView.Id # Get Id of the active view
+walls_all = FilteredElementCollector(doc, ViewId).OfCategory(BuiltInCategory.OST_Walls).ToElements() # Get all walls on the view
+
+#  Filter walls with no need to check
+walls = []
+for i in walls_all:
+	try:
+		temp = i.Orientation
+		walls.append(i)
+	except:
+		pass
+
+#  Get direction of reference plane
+ref_ox = abs(ref.Direction.Y)
+ref_oy = abs(ref.Direction.X)
+
+#  Get lists of walls that are parallel and perpendicular
+walls_par = []
+walls_per = []
+for i in walls:
+	ox = abs(i.Orientation.X)
+	oy = abs(i.Orientation.Y)
+	#  Checking if parallel
+	if abs(ox - ref_ox) &lt;= tolerance and abs(oy - ref_oy) &lt;= tolerance:
+		walls_par.append(i)
+	#  Checking if perpendicular
+	if abs(ox - ref_oy) &lt;= tolerance and abs(oy - ref_ox) &lt;= tolerance:
+		walls_per.append(i)
+#  Subtracting the lists from all walls list via set operation
+walls_filter = list(set(walls).difference(set(walls_par)).difference(set(walls_per)))
+#  Converting to List (same as ICollection) of Element Ids
+walls_filter_ids = List[ElementId]()
+for i in walls_filter:
+	walls_filter_ids.Add(i.Id)
+
+TransactionManager.Instance.EnsureInTransaction(doc)
+
+#  Checking if filter already exists
+filters = FilteredElementCollector(doc).OfClass(SelectionFilterElement).ToElements()
+for f in filters:
+	if f.Name == "Walls parallel filter":
+		doc.Delete(f.Id)
+
+filter = SelectionFilterElement.Create(doc, "Walls parallel filter")
+filter.SetElementIds(walls_filter_ids)
+
+#  Add the filter to the view
+filterId = filter.Id
+view.AddFilter(filterId)
+doc.Regenerate()
+
+#  Get solid pattern
+patterns = FilteredElementCollector(doc).OfClass(FillPatternElement).ToElements()
+for p in patterns:
+	if p.Name == "&lt;Solid fill&gt;":
+		pattern = p.Id
+
+#  Use the existing graphics settings, and change the color to Orange
+overrideSettings = view.GetFilterOverrides(filterId)
+overrideSettings.SetCutForegroundPatternColor(color)
+overrideSettings.SetCutForegroundPatternId(pattern)
+view.SetFilterOverrides(filterId, overrideSettings)
+	
+OUT = 'Filter "Walls parallel filter" is created.'
+
+TransactionManager.Instance.TransactionTaskDone()</Script>
+    </PythonNodeModels.PythonNode>
+  </Elements>
+  <Connectors>
+    <Dynamo.Graph.Connectors.ConnectorModel start="316141b3-01dc-4726-882e-34e44e07c2b4" start_index="0" end="07154a56-471b-47e8-8788-9ef0cf679ffc" end_index="0" portType="0" />
+    <Dynamo.Graph.Connectors.ConnectorModel start="07154a56-471b-47e8-8788-9ef0cf679ffc" start_index="0" end="befa480a-ac7f-4d45-9fad-31f5f3a62fde" end_index="0" portType="0" />
+  </Connectors>
+  <Notes />
+  <Annotations />
+  <Presets />
+  <Cameras>
+    <Camera Name="Background Preview" eyeX="-17" eyeY="24" eyeZ="50" lookX="12" lookY="-13" lookZ="-58" upX="0" upY="1" upZ="0" />
+  </Cameras>
+</Workspace>

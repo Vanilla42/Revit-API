@@ -1,0 +1,62 @@
+<Workspace Version="1.3.3.4111" X="-265.791997911588" Y="-42.6204294810777" zoom="0.88961699474913" ScaleFactor="1" Name="Home" Description="" RunType="Manual" RunPeriod="1000" HasRunWithoutCrash="True">
+  <NamespaceResolutionMap />
+  <Elements>
+    <CoreNodeModels.Watch guid="8f08d78a-d6be-4a6f-8de9-aa645dd817de" type="CoreNodeModels.Watch" nickname="Result" x="858.284563755783" y="297.985660943566" isVisible="true" isUpstreamVisible="true" lacing="Disabled" isSelectedInput="False" IsFrozen="false" isPinned="false">
+      <PortInfo index="0" default="False" />
+    </CoreNodeModels.Watch>
+    <Dynamo.Nodes.DSModelElementSelection guid="f4a9ac1c-7850-4c42-90e7-8b0b11923a9f" type="Dynamo.Nodes.DSModelElementSelection" nickname="Select Model Element" x="345" y="298" isVisible="true" isUpstreamVisible="true" lacing="Disabled" isSelectedInput="True" IsFrozen="false" isPinned="false">
+      <instance id="408024f7-f98b-406b-83b8-07ca7b13b980-0020e495" />
+    </Dynamo.Nodes.DSModelElementSelection>
+    <PythonNodeModels.PythonNode guid="59d085cb-d833-478a-b027-bb210520de93" type="PythonNodeModels.PythonNode" nickname="Python Script" x="642.792103733693" y="296.977499074189" isVisible="true" isUpstreamVisible="true" lacing="Disabled" isSelectedInput="False" IsFrozen="false" isPinned="false" inputcount="1">
+      <PortInfo index="0" default="False" />
+      <Script>import clr
+clr.AddReference('ProtoGeometry')
+from Autodesk.DesignScript.Geometry import *
+clr.AddReference("RevitAPI")
+from Autodesk.Revit.DB import *
+clr.AddReference("RevitServices")
+import RevitServices
+from RevitServices.Persistence import DocumentManager
+from RevitServices.Transactions import TransactionManager
+doc = DocumentManager.Instance.CurrentDBDocument
+
+
+element = UnwrapElement(IN[0])
+
+
+Options().ComputeReferences = True
+
+
+#  Get faces from geometry
+faces = []
+for geometry_instance in element.get_Geometry(Options()):
+	if "Autodesk.Revit.DB.Solid" in str(geometry_instance):
+		faces = geometry_instance.Faces
+	
+
+#  Transaction
+TransactionManager.Instance.EnsureInTransaction(doc)
+
+faces_cleared = 0
+for i in faces:
+	if Document.IsPainted(doc, element.Id, i) == True:
+		Document.RemovePaint(doc, element.Id, i)
+		faces_cleared += 1
+		
+TransactionManager.Instance.TransactionTaskDone()
+	
+
+OUT = str(faces_cleared) + " of " + str(len(list(faces))) + " faces have been cleared"</Script>
+    </PythonNodeModels.PythonNode>
+  </Elements>
+  <Connectors>
+    <Dynamo.Graph.Connectors.ConnectorModel start="f4a9ac1c-7850-4c42-90e7-8b0b11923a9f" start_index="0" end="59d085cb-d833-478a-b027-bb210520de93" end_index="0" portType="0" />
+    <Dynamo.Graph.Connectors.ConnectorModel start="59d085cb-d833-478a-b027-bb210520de93" start_index="0" end="8f08d78a-d6be-4a6f-8de9-aa645dd817de" end_index="0" portType="0" />
+  </Connectors>
+  <Notes />
+  <Annotations />
+  <Presets />
+  <Cameras>
+    <Camera Name="Background Preview" eyeX="-5.41140937805176" eyeY="2.18570351600647" eyeZ="19.8241634368896" lookX="4.90884685516357" lookY="-5.3179178237915" lookZ="-23.726095199585" upX="0" upY="1" upZ="0" />
+  </Cameras>
+</Workspace>

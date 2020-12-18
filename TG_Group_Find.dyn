@@ -1,0 +1,211 @@
+{
+  "Uuid": "3457b8a5-12f0-46aa-8cd2-c7e33d734685",
+  "IsCustomNode": false,
+  "Description": null,
+  "Name": "TG_Group_Find",
+  "ElementResolver": {
+    "ResolutionMap": {}
+  },
+  "Inputs": [],
+  "Outputs": [],
+  "Nodes": [
+    {
+      "ConcreteType": "PythonNodeModels.PythonNode, PythonNodeModels",
+      "NodeType": "PythonScriptNode",
+      "Code": "import clr\r\nclr.AddReference(\"RevitAPI\")\r\nfrom Autodesk.Revit.DB import *\r\nclr.AddReference(\"RevitServices\")\r\nimport RevitServices\r\nfrom RevitServices.Persistence import DocumentManager\r\nfrom RevitServices.Transactions import TransactionManager\r\n\r\nclr.AddReference(\"RevitAPIUI\")\r\nimport Autodesk.Revit.UI\r\nimport Autodesk.Revit.UI.Selection\r\n\r\nclr.AddReference(\"System.Collections\")\r\nfrom System.Collections.Generic import List\r\n\r\ndoc = DocumentManager.Instance.CurrentDBDocument\r\nuidoc = DocumentManager.Instance.CurrentUIApplication.ActiveUIDocument\r\n\r\n\r\n\r\nelement = UnwrapElement(IN[0])\r\n\r\ngroup_id = element.GroupId\r\n\r\ntry:\r\n\tgroup = doc.GetElement(group_id)\r\n\tgroup_name = group.Name\r\n\t\r\n\tsel_list = List[ElementId]()\r\n\tsel_list.Add(group_id)\r\n\t\r\n\tuidoc.Selection.SetElementIds(sel_list)\r\n\t\r\n\tOUT = \"Name of the group: \" + group_name\r\nexcept AttributeError:\r\n\tOUT = \"Element not in a group.\"",
+      "VariableInputPorts": true,
+      "Id": "327dbf43674f416893779d487d6b9899",
+      "Inputs": [
+        {
+          "Id": "897a240ce7eb483ab1dc200d1727b904",
+          "Name": "IN[0]",
+          "Description": "Input #0",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        },
+        {
+          "Id": "5168869168d2434daac13b9b2c2a6008",
+          "Name": "IN[1]",
+          "Description": "Input #1",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Outputs": [
+        {
+          "Id": "9c897a41ec2144b980cfae0e9631c415",
+          "Name": "OUT",
+          "Description": "Result of the python script",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Runs an embedded IronPython script."
+    },
+    {
+      "ConcreteType": "CoreNodeModels.Input.BoolSelector, CoreNodeModels",
+      "NodeType": "BooleanInputNode",
+      "InputValue": true,
+      "Id": "4b8355e2f8304ec8ab27e53473bf97df",
+      "Inputs": [],
+      "Outputs": [
+        {
+          "Id": "31cdf79e35df41e39538ba4c4a1bd5a3",
+          "Name": "",
+          "Description": "Boolean",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Selection between a true and false."
+    },
+    {
+      "ConcreteType": "CoreNodeModels.Watch, CoreNodeModels",
+      "NodeType": "ExtensionNode",
+      "Id": "a3e1ae05787c445dacf3401f68437d32",
+      "Inputs": [
+        {
+          "Id": "edcc8171456c48aaaa81f7a64612e1ad",
+          "Name": "",
+          "Description": "Node to evaluate.",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Outputs": [
+        {
+          "Id": "e8b8a612205d483986c72421c56e734d",
+          "Name": "",
+          "Description": "Watch contents.",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Visualize the output of node."
+    },
+    {
+      "ConcreteType": "Dynamo.Nodes.DSModelElementSelection, DSRevitNodesUI",
+      "NodeType": "ExtensionNode",
+      "InstanceId": [
+        "307a5655-7eba-482e-88fc-1d8c6cac09f9-005db285"
+      ],
+      "Id": "2f9974bb8bee4c7d87c56e1d2a15b412",
+      "Inputs": [],
+      "Outputs": [
+        {
+          "Id": "c7df1fa5e8074e54a6ff4a0dfaf5297a",
+          "Name": "Element",
+          "Description": "The selected elements.",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled"
+    }
+  ],
+  "Connectors": [
+    {
+      "Start": "9c897a41ec2144b980cfae0e9631c415",
+      "End": "edcc8171456c48aaaa81f7a64612e1ad",
+      "Id": "1c271008dbf14113ac53ea04819ff6c0"
+    },
+    {
+      "Start": "31cdf79e35df41e39538ba4c4a1bd5a3",
+      "End": "5168869168d2434daac13b9b2c2a6008",
+      "Id": "0680d9110df44d08a4388f799f1832d4"
+    },
+    {
+      "Start": "c7df1fa5e8074e54a6ff4a0dfaf5297a",
+      "End": "897a240ce7eb483ab1dc200d1727b904",
+      "Id": "555864607f1d449886a4621cab466c87"
+    }
+  ],
+  "Dependencies": [],
+  "NodeLibraryDependencies": [],
+  "Bindings": [],
+  "View": {
+    "Dynamo": {
+      "ScaleFactor": 1.0,
+      "HasRunWithoutCrash": true,
+      "IsVisibleInDynamoLibrary": true,
+      "Version": "2.6.1.8786",
+      "RunType": "Manual",
+      "RunPeriod": "1000"
+    },
+    "Camera": {
+      "Name": "Background Preview",
+      "EyeX": -17.0,
+      "EyeY": 24.0,
+      "EyeZ": 50.0,
+      "LookX": 12.0,
+      "LookY": -13.0,
+      "LookZ": -58.0,
+      "UpX": 0.0,
+      "UpY": 1.0,
+      "UpZ": 0.0
+    },
+    "NodeViews": [
+      {
+        "ShowGeometry": true,
+        "Name": "Python Script",
+        "Id": "327dbf43674f416893779d487d6b9899",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "X": 431.5,
+        "Y": 368.0
+      },
+      {
+        "ShowGeometry": true,
+        "Name": "Boolean",
+        "Id": "4b8355e2f8304ec8ab27e53473bf97df",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "X": 238.5,
+        "Y": 431.0
+      },
+      {
+        "ShowGeometry": true,
+        "Name": "Result",
+        "Id": "a3e1ae05787c445dacf3401f68437d32",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "X": 619.5,
+        "Y": 370.0
+      },
+      {
+        "ShowGeometry": true,
+        "Name": "Select Model Element",
+        "Id": "2f9974bb8bee4c7d87c56e1d2a15b412",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "X": 204.5,
+        "Y": 314.0
+      }
+    ],
+    "Annotations": [],
+    "X": 0.0,
+    "Y": 0.0,
+    "Zoom": 1.0
+  }
+}

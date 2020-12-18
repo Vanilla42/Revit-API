@@ -1,0 +1,410 @@
+{
+  "Uuid": "3c9d0464-8643-5ffe-96e5-ab1769818209",
+  "IsCustomNode": false,
+  "Description": "",
+  "Name": "TG_Walls_Comparison",
+  "ElementResolver": {
+    "ResolutionMap": {}
+  },
+  "Inputs": [
+    {
+      "Id": "f6411ba800974f2eb02b910bbe876e79",
+      "Name": "Links Count",
+      "Type": "number",
+      "Value": "2",
+      "MaximumValue": 2.0,
+      "MinimumValue": 1.0,
+      "StepValue": 1.0,
+      "NumberType": "Double",
+      "Description": "A slider that produces numeric values."
+    },
+    {
+      "Id": "5f8d28ef61f747ac96410c402b76cd3b",
+      "Name": "Material Name",
+      "Type": "string",
+      "Value": "גבס",
+      "Description": "Creates a string."
+    }
+  ],
+  "Outputs": [],
+  "Nodes": [
+    {
+      "ConcreteType": "PythonNodeModels.PythonNode, PythonNodeModels",
+      "NodeType": "PythonScriptNode",
+      "Code": "import clr\nclr.AddReference('ProtoGeometry')\nfrom Autodesk.DesignScript.Geometry import *\nclr.AddReference(\"RevitAPI\")\nfrom Autodesk.Revit.DB import *\nclr.AddReference(\"RevitServices\")\nimport RevitServices\nfrom RevitServices.Persistence import DocumentManager\nfrom RevitServices.Transactions import TransactionManager\n\nclr.AddReference(\"RevitNodes\")\nimport Revit\nclr.ImportExtensions(Revit.Elements)\nclr.ImportExtensions(Revit.GeometryConversion)\n\ndoc = DocumentManager.Instance.CurrentDBDocument\nactive_view = doc.ActiveView\nelevation = active_view.GenLevel.Elevation\n\n\nfilled_region_type = UnwrapElement(IN[0]).Id\nlinks_count = IN[1]\nmat_name = IN[2]\n\n\nopt = Options()\n\n\ndef GetWallsLoops(wall):\n\topt = Options()\n\tloops = []\n\tgeom_elem = wall.get_Geometry(opt)\n\tfor geom_solid in geom_elem:\n\t\tfor face in geom_solid.Faces:\n\t\t\ttry:\n\t\t\t\tif face.FaceNormal.Z == -1: #!!! (1)\n\t\t\t\t\th = face.Origin.Z\n\t\t\t\t\t#  Get the lowest face\n\t\t\t\t\tif not loops:\n\t\t\t\t\t\tloops = face.GetEdgesAsCurveLoops()\n\t\t\t\t\t\th_lowest = h\n\t\t\t\t\telse:\n\t\t\t\t\t\tif h < h_lowest:\n\t\t\t\t\t\t\tloops = face.GetEdgesAsCurveLoops()\n\t\t\t\t\t\t\th_lowest = h\n\t\t\texcept AttributeError:\n\t\t\t\tpass\n\treturn loops\n\t\ndef GetWallsLoop(loops):\n\ttemp_booleaned = []\n\tfor i in loops:\n\t\ttry:\n\t\t\ttemp_extrusion = GeometryCreationUtilities.CreateExtrusionGeometry(i, XYZ(0,0,1), 10)\n\t\texcept:\n\t\t\tpass\n\t\tif temp_booleaned:\n\t\t\tb = BooleanOperationsUtils.ExecuteBooleanOperation(temp_extrusion, temp_booleaned, BooleanOperationsType.Union)\n\t\t\ttemp_booleaned = b\n\t\telse:\n\t\t\ttemp_booleaned = temp_extrusion\n\treturn temp_booleaned\n\n#  Get links\nlinks = FilteredElementCollector(doc, active_view.Id).OfCategory(BuiltInCategory.OST_RvtLinks).ToElements()\ntry:\n\tlink_0 = links[0].GetLinkDocument()\nexcept ValueError:\n\tpass\ntry:\n\tlink_1 = links[1].GetLinkDocument()\nexcept ValueError:\n\tpass\n\n#  Selecting all walls from 1 doc on the view\nwalls_0_all = FilteredElementCollector(link_0).OfCategory(BuiltInCategory.OST_Walls).WhereElementIsNotElementType()\nlevels_0_all = FilteredElementCollector(link_0).OfCategory(BuiltInCategory.OST_Levels).WhereElementIsNotElementType().ToElements()\nlevel_0 = levels_0_all[0].Elevation\nfor i in levels_0_all:\n\tif abs(i.ProjectElevation - elevation) < 1:\n\t\tlevel_0 = i.ProjectElevation\n\nif links_count == 1:\n\twalls_1_all = FilteredElementCollector(doc, active_view.Id).OfCategory(BuiltInCategory.OST_Walls).WhereElementIsNotElementType().ToElements()\nelse:\n\twalls_1_all = FilteredElementCollector(link_1).OfCategory(BuiltInCategory.OST_Walls).WhereElementIsNotElementType()\n\tlevels_1_all = FilteredElementCollector(link_1).OfCategory(BuiltInCategory.OST_Levels).WhereElementIsNotElementType().ToElements()\n\tlevel_1 = levels_1_all[0].Elevation\n\tfor i in levels_1_all:\n\t\tif abs(i.ProjectElevation - elevation) < 1:\n\t\t\tlevel_1 = i.Elevation\n\n\n#  Filtering needed walls for materials and height (for links)\nwalls_0 = []\ntest = []\nfor i in walls_0_all:\n\ttry:\n\t\tmats = i.WallType.GetCompoundStructure().GetLayers()\n\t\tmats_id = [m.MaterialId for m in mats]\n\t\tmats_name = []\n\t\tfor j in mats_id:\n\t\t\tmats_name.append(link_0.GetElement(j).Name)\n\t\t\ttest.append(mats_name)\n\t\tif mat_name in mats_name:\n\t\t\tdiff_0 = abs(i.Location.Curve.Origin.Z - level_0)\n\t\t\ttest.append(i.Location.Curve.Origin.Z)\n\t\t\tif diff_0 < 1:\n\t\t\t\twalls_0.append(i)\n\texcept AttributeError:\n\t\tpass\nwalls_1 = []\nfor i in walls_1_all:\n\ttry:\n\t\tmats = i.WallType.GetCompoundStructure().GetLayers()\n\t\tmats_id = [m.MaterialId for m in mats]\n\t\tmats_name = []\n\t\tfor j in mats_id:\n\t\t\tif links_count == 1:\n\t\t\t\tmats_name.append(doc.GetElement(j).Name)\n\t\t\telse:\n\t\t\t\tmats_name.append(link_1.GetElement(j).Name)\n\t\tif mat_name in mats_name:\n\t\t\tif links_count == 1:\n\t\t\t\tdiff_1 = abs(i.Location.Curve.Origin.Z - level_0)\n\t\t\telse:\n\t\t\t\tdiff_1 = abs(i.Location.Curve.Origin.Z - level_1)\n\t\t\tif diff_1 < 1:\n\t\t\t\twalls_1.append(i)\n\texcept:\n\t\tpass\n\n\n#  Getting plan loops of walls\nloops_0 = [GetWallsLoops(i) for i in walls_0 if GetWallsLoops(i)]\nloops_1 = [GetWallsLoops(i) for i in walls_1 if GetWallsLoops(i)]\n\n#  Getting plan loops of wall sets\nloop_0 = GetWallsLoop(loops_0)\nloop_1 = GetWallsLoop(loops_1)\n\nif loop_0 and loop_1:\n\tbool = BooleanOperationsUtils.ExecuteBooleanOperation(loop_0, loop_1, BooleanOperationsType.Intersect)\n\t\n\t#  Create CurveLoop from intersection\n\tloop = []\n\tfor face in bool.Faces:\n\t\ttry:\n\t\t\tif face.FaceNormal.Z == 1:\n\t\t\t\tloop.append(face.GetEdgesAsCurveLoops())\n\t\texcept AttributeError:\n\t\t\tpass\n\t\n\t\n\tTransactionManager.Instance.EnsureInTransaction(doc)\n\t\n\t#  Drawing filled region\n\tcount = 0\n\tfor i in loop:\n\t\tregion = FilledRegion.Create(doc, filled_region_type, active_view.Id, i)\n\t\tcount += 1\n\t\n\t\n\tTransactionManager.Instance.TransactionTaskDone()\n\t\n\t\n\tOUT = str (count) + \" filled regions created.\"\n\nelse:\n\tOUT = \"No intersections found.\"\n\n#OUT = loops_1",
+      "VariableInputPorts": true,
+      "Id": "18b57c8efa2d4ec28120b763a93a5291",
+      "Inputs": [
+        {
+          "Id": "cdde6bf94991424a96d08e346200a8c2",
+          "Name": "IN[0]",
+          "Description": "Input #0",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        },
+        {
+          "Id": "cf3bfdfc264e490597715722519f35fc",
+          "Name": "IN[1]",
+          "Description": "Input #1",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        },
+        {
+          "Id": "b7238eb900894aa4b369d4f77cf2b4b9",
+          "Name": "IN[2]",
+          "Description": "Input #2",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        },
+        {
+          "Id": "f2daca9c2e6f44bb9390271880e7d04d",
+          "Name": "IN[3]",
+          "Description": "Input #3",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Outputs": [
+        {
+          "Id": "6b4915ac8f964733af27d27b98e4a6c9",
+          "Name": "OUT",
+          "Description": "Result of the python script",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Runs an embedded IronPython script."
+    },
+    {
+      "ConcreteType": "CoreNodeModels.Watch, CoreNodeModels",
+      "NodeType": "ExtensionNode",
+      "Id": "f22c9152c5e44bf9a0bf187f247ef8a2",
+      "Inputs": [
+        {
+          "Id": "bd35e62e89b049aa826fa54c3952c135",
+          "Name": "",
+          "Description": "Node to evaluate.",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Outputs": [
+        {
+          "Id": "46c465c9a2cb4e7fa9316ec5514494b2",
+          "Name": "",
+          "Description": "Watch contents.",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Visualize the output of node."
+    },
+    {
+      "ConcreteType": "DSRevitNodesUI.FilledRegionTypes, DSRevitNodesUI",
+      "SelectedIndex": 47,
+      "SelectedString": "Solid Pink",
+      "NodeType": "ExtensionNode",
+      "Id": "258c2e00fd5e4245836023214f5aee28",
+      "Inputs": [],
+      "Outputs": [
+        {
+          "Id": "34fbe39689b34d9b891d2993e184f1d6",
+          "Name": "FilledRegionType",
+          "Description": "The selected FilledRegionType",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Select an existing Filled Region Type from the active document."
+    },
+    {
+      "ConcreteType": "CoreNodeModels.Input.DoubleSlider, CoreNodeModels",
+      "NodeType": "NumberInputNode",
+      "NumberType": "Double",
+      "MaximumValue": 2.0,
+      "MinimumValue": 1.0,
+      "StepValue": 1.0,
+      "InputValue": 2.0,
+      "Id": "f6411ba800974f2eb02b910bbe876e79",
+      "Inputs": [],
+      "Outputs": [
+        {
+          "Id": "88342ed0715e4adca68978d6135c5a4d",
+          "Name": "",
+          "Description": "Double",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "A slider that produces numeric values."
+    },
+    {
+      "ConcreteType": "CoreNodeModels.Input.StringInput, CoreNodeModels",
+      "NodeType": "StringInputNode",
+      "InputValue": "גבס",
+      "Id": "5f8d28ef61f747ac96410c402b76cd3b",
+      "Inputs": [],
+      "Outputs": [
+        {
+          "Id": "0770e7dc524b47f392bbcb81084be66e",
+          "Name": "",
+          "Description": "String",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Creates a string."
+    },
+    {
+      "ConcreteType": "CoreNodeModels.Input.BoolSelector, CoreNodeModels",
+      "NodeType": "BooleanInputNode",
+      "InputValue": true,
+      "Id": "88b8378fcc2a445db1e6adbcd782c146",
+      "Inputs": [],
+      "Outputs": [
+        {
+          "Id": "abed7e88195f43789c0ebbfb8c688f8a",
+          "Name": "",
+          "Description": "Boolean",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Selection between a true and false."
+    },
+    {
+      "ConcreteType": "PythonNodeModels.PythonNode, PythonNodeModels",
+      "NodeType": "PythonScriptNode",
+      "Code": "import clr\nclr.AddReference('ProtoGeometry')\nfrom Autodesk.DesignScript.Geometry import *\nclr.AddReference(\"RevitAPI\")\nfrom Autodesk.Revit.DB import *\nclr.AddReference(\"RevitServices\")\nimport RevitServices\nfrom RevitServices.Persistence import DocumentManager\nfrom RevitServices.Transactions import TransactionManager\n\nclr.AddReference(\"RevitNodes\")\nimport Revit\nclr.ImportExtensions(Revit.Elements)\nclr.ImportExtensions(Revit.GeometryConversion)\n\ndoc = DocumentManager.Instance.CurrentDBDocument\nactive_view = doc.ActiveView\nelevation = active_view.GenLevel.Elevation\n\n\nfilled_region_type = UnwrapElement(IN[0]).Id\nlinks_count = IN[1]\nmat_name = IN[2]\n\n\nopt = Options()\n\n\ndef GetWallsLoops(wall):\n\topt = Options()\n\tloops = []\n\tgeom_elem = wall.get_Geometry(opt)\n\tfor geom_solid in geom_elem:\n\t\tfor face in geom_solid.Faces:\n\t\t\ttry:\n\t\t\t\tif face.FaceNormal.Z == 1:\n\t\t\t\t\tloops = face.GetEdgesAsCurveLoops()\n\t\t\texcept AttributeError:\n\t\t\t\tpass\n\treturn loops\n\t\ndef GetWallsLoop(loops):\n\ttemp_booleaned = []\n\tfor i in loops:\n\t\ttemp_extrusion = GeometryCreationUtilities.CreateExtrusionGeometry(i, XYZ(0,0,1), 10)\n\t\tif temp_booleaned:\n\t\t\tb = BooleanOperationsUtils.ExecuteBooleanOperation(temp_extrusion, temp_booleaned, BooleanOperationsType.Union)\n\t\t\ttemp_booleaned = b\n\t\telse:\n\t\t\ttemp_booleaned = temp_extrusion\n\t\"\"\"\n\t#  Create CurveLoop from total extrusion\n\tloop = []\n\tfor face in temp_booleaned.Faces:\n\t\ttry:\n\t\t\tif face.FaceNormal.Z == 1:\n\t\t\t\tloop = face.GetEdgesAsCurveLoops()\n\t\texcept AttributeError:\n\t\t\tpass\n\treturn loop\n\t\"\"\"\n\treturn temp_booleaned\n\t\ndef GetIntersection(l_0, l_1):\n\ttemp_extrusion_0 = GeometryCreationUtilities.CreateExtrusionGeometry(l_0, XYZ(0,0,1), 10)\n\ttemp_extrusion_1 = GeometryCreationUtilities.CreateExtrusionGeometry(l_1, XYZ(0,0,1), 10)\n\tbool = BooleanOperationsUtils.ExecuteBooleanOperation(temp_extrusion_0, temp_extrusion_1, BooleanOperationsType.Intersect)\n\t\n\t#  Create CurveLoop from intersection\n\tl = []\n\tfor face in bool.Faces:\n\t\ttry:\n\t\t\tif face.FaceNormal.Z == 1:\n\t\t\t\tl = face.GetEdgesAsCurveLoops()\n\t\texcept AttributeError:\n\t\t\tpass\n\treturn l\n\n#  Get links\nlinks = FilteredElementCollector(doc, active_view.Id).OfCategory(BuiltInCategory.OST_RvtLinks).ToElements()\ntry:\n\tlink_0 = links[0].GetLinkDocument()\n\tlink_1 = links[1].GetLinkDocument()\nexcept ValueError:\n\tpass\n\n\n#  Selecting all walls from 1 doc on the view\nwalls_0_all = FilteredElementCollector(link_0).OfCategory(BuiltInCategory.OST_Walls).WhereElementIsNotElementType()\nif links_count == 1:\n\twalls_1_all = FilteredElementCollector(doc, active_view.Id).OfCategory(BuiltInCategory.OST_Walls).WhereElementIsNotElementType().ToElements()\nelse:\n\twalls_1_all = FilteredElementCollector(link_1).OfCategory(BuiltInCategory.OST_Walls).WhereElementIsNotElementType()\n\n\n#  Filtering needed walls for materials\nwalls_0 = []\nfor i in walls_0_all:\n\ttry:\n\t\tmats = i.WallType.GetCompoundStructure().GetLayers()\n\t\tmats_id = [m.MaterialId for m in mats]\n\t\tmats_name = []\n\t\tfor j in mats_id:\n\t\t\tmats_name.append(link_0.GetElement(j).Name)\n\t\tif mat_name in mats_name:\n\t\t\twalls_0.append(i)\n\texcept:\n\t\tpass\nwalls_1 = []\nfor i in walls_1_all:\n\ttry:\n\t\tmats = i.WallType.GetCompoundStructure().GetLayers()\n\t\tmats_id = [m.MaterialId for m in mats]\n\t\tmats_name = []\n\t\tfor j in mats_id:\n\t\t\tif links_count == 1:\n\t\t\t\tmats_name.append(doc.GetElement(j).Name)\n\t\t\telse:\n\t\t\t\tmats_name.append(link_1.GetElement(j).Name)\n\t\tif mat_name in mats_name:\n\t\t\twalls_1.append(i)\n\texcept:\n\t\tpass\n\n\n#  Getting plan loops of walls\nloops_0 = [GetWallsLoops(i) for i in walls_0 if GetWallsLoops(i)]\nloops_1 = [GetWallsLoops(i) for i in walls_1 if GetWallsLoops(i)]\n\n#  Getting plan loops of wall sets\nloop_0 = GetWallsLoop(loops_0)\nloop_1 = GetWallsLoop(loops_1)\n\"\"\"\ntemp_booleaned = []\ntest = 0\nloop_0 = []\nloop_1 = []\nfor i in loops_0:\n\ttemp_extrusion = GeometryCreationUtilities.CreateExtrusionGeometry(i, XYZ(0,0,1), 10)\n\tif loop_0:\n\t\tb = BooleanOperationsUtils.ExecuteBooleanOperation(temp_extrusion, loop_0, BooleanOperationsType.Union)\n\t\tloop_0 = b\n\telse:\n\t\tloop_0 = temp_extrusion\n\nfor i in loops_1:\n\ttemp_extrusion = GeometryCreationUtilities.CreateExtrusionGeometry(i, XYZ(0,0,1), 10)\n\tif loop_1:\n\t\tb = BooleanOperationsUtils.ExecuteBooleanOperation(temp_extrusion, loop_1, BooleanOperationsType.Union)\n\t\tloop_1 = b\n\telse:\n\t\tloop_1 = temp_extrusion\n#  Getting intersections\nloop = GetIntersection(loop_0, loop_1)\n\"\"\"\n\n\nbool = BooleanOperationsUtils.ExecuteBooleanOperation(loop_0, loop_1, BooleanOperationsType.Intersect)\n\n#  Create CurveLoop from intersection\nloop = []\nfor face in bool.Faces:\n\ttry:\n\t\tif face.FaceNormal.Z == 1:\n\t\t\tloop.append(face.GetEdgesAsCurveLoops())\n\texcept AttributeError:\n\t\tpass\n\n\nTransactionManager.Instance.EnsureInTransaction(doc)\n\n#  Drawing filled region\nfor i in loop:\n\tregion = FilledRegion.Create(doc, filled_region_type, active_view.Id, i)\n\n\nTransactionManager.Instance.TransactionTaskDone()\n\nOUT = region",
+      "VariableInputPorts": true,
+      "Id": "8799d947073e4a3ebeabb8d9a762a2d8",
+      "Inputs": [
+        {
+          "Id": "00909447aa1e4ab3b726406769916a0f",
+          "Name": "IN[0]",
+          "Description": "Input #0",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        },
+        {
+          "Id": "ef6a845793a04f979d5895291dfc83ea",
+          "Name": "IN[1]",
+          "Description": "Input #1",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        },
+        {
+          "Id": "8acaa26ed8874996b0caca37d1d1ee0e",
+          "Name": "IN[2]",
+          "Description": "Input #2",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        },
+        {
+          "Id": "f730ce3077ea4bc889337d37720f4760",
+          "Name": "IN[3]",
+          "Description": "Input #3",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Outputs": [
+        {
+          "Id": "45a2ce1211ca450cbc0d70f7adabbe9a",
+          "Name": "OUT",
+          "Description": "Результат сценария Python",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Runs an embedded IronPython script."
+    }
+  ],
+  "Connectors": [
+    {
+      "Start": "6b4915ac8f964733af27d27b98e4a6c9",
+      "End": "bd35e62e89b049aa826fa54c3952c135",
+      "Id": "02857a9f3ff74ab7a59936eef06293e9"
+    },
+    {
+      "Start": "34fbe39689b34d9b891d2993e184f1d6",
+      "End": "cdde6bf94991424a96d08e346200a8c2",
+      "Id": "717f1fcb4fb44f21b7de01e5aa50c298"
+    },
+    {
+      "Start": "34fbe39689b34d9b891d2993e184f1d6",
+      "End": "00909447aa1e4ab3b726406769916a0f",
+      "Id": "0bfbb38c3f3c4be1b75b58b24b8daf96"
+    },
+    {
+      "Start": "88342ed0715e4adca68978d6135c5a4d",
+      "End": "cf3bfdfc264e490597715722519f35fc",
+      "Id": "7985f04b5d3f4c7fa3f6d216b2c118aa"
+    },
+    {
+      "Start": "88342ed0715e4adca68978d6135c5a4d",
+      "End": "ef6a845793a04f979d5895291dfc83ea",
+      "Id": "70c29a66a260475db05cd8201908cdda"
+    },
+    {
+      "Start": "0770e7dc524b47f392bbcb81084be66e",
+      "End": "b7238eb900894aa4b369d4f77cf2b4b9",
+      "Id": "196127f1e06840ff8a9e7262207f1910"
+    },
+    {
+      "Start": "0770e7dc524b47f392bbcb81084be66e",
+      "End": "8acaa26ed8874996b0caca37d1d1ee0e",
+      "Id": "2ed71cceadbc4b98ab71671b35fa1ec6"
+    },
+    {
+      "Start": "abed7e88195f43789c0ebbfb8c688f8a",
+      "End": "f730ce3077ea4bc889337d37720f4760",
+      "Id": "3958e956fc044cd99454d153b64750f5"
+    },
+    {
+      "Start": "abed7e88195f43789c0ebbfb8c688f8a",
+      "End": "f2daca9c2e6f44bb9390271880e7d04d",
+      "Id": "56e0fe053c9b4124ab10102ef3e94f4a"
+    }
+  ],
+  "Dependencies": [],
+  "NodeLibraryDependencies": [],
+  "Bindings": [],
+  "View": {
+    "Dynamo": {
+      "ScaleFactor": 1.0,
+      "HasRunWithoutCrash": true,
+      "IsVisibleInDynamoLibrary": true,
+      "Version": "2.6.1.8786",
+      "RunType": "Manual",
+      "RunPeriod": "1000"
+    },
+    "Camera": {
+      "Name": "Background Preview",
+      "EyeX": 14097.48828125,
+      "EyeY": 1798.6474609375,
+      "EyeZ": 2578.833251953125,
+      "LookX": 2829.55224609375,
+      "LookY": -2398.6474609375,
+      "LookZ": -2400.53759765625,
+      "UpX": 0.26705005764961243,
+      "UpY": 0.93667221069335938,
+      "UpZ": -0.22656010091304779
+    },
+    "NodeViews": [
+      {
+        "ShowGeometry": true,
+        "Name": "Python Script",
+        "Id": "18b57c8efa2d4ec28120b763a93a5291",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "X": -10.020979092040335,
+        "Y": 340.32439650287859
+      },
+      {
+        "ShowGeometry": true,
+        "Name": "Result",
+        "Id": "f22c9152c5e44bf9a0bf187f247ef8a2",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "X": 177.86042855610441,
+        "Y": 342.90291198685122
+      },
+      {
+        "ShowGeometry": true,
+        "Name": "Select Filled Region Type",
+        "Id": "258c2e00fd5e4245836023214f5aee28",
+        "IsSetAsInput": true,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "X": -538.43747016775933,
+        "Y": 534.92672491770691
+      },
+      {
+        "ShowGeometry": true,
+        "Name": "Links Count",
+        "Id": "f6411ba800974f2eb02b910bbe876e79",
+        "IsSetAsInput": true,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "X": -624.929975436466,
+        "Y": 648.95035084243125
+      },
+      {
+        "ShowGeometry": true,
+        "Name": "Material Name",
+        "Id": "5f8d28ef61f747ac96410c402b76cd3b",
+        "IsSetAsInput": true,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "X": -496.57414227381349,
+        "Y": 739.1992438205823
+      },
+      {
+        "ShowGeometry": true,
+        "Name": "Boolean",
+        "Id": "88b8378fcc2a445db1e6adbcd782c146",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "X": -157.35498192363389,
+        "Y": 576.500147895756
+      },
+      {
+        "ShowGeometry": true,
+        "Name": "Python Script",
+        "Id": "8799d947073e4a3ebeabb8d9a762a2d8",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": true,
+        "X": -19.919713743834336,
+        "Y": 667.15712871365406
+      }
+    ],
+    "Annotations": [],
+    "X": 501.383059437861,
+    "Y": -153.49076520250412,
+    "Zoom": 0.874492314318659
+  }
+}

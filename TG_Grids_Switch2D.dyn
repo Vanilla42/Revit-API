@@ -1,0 +1,87 @@
+<Workspace Version="1.3.4.6666" X="-2484.8303774488" Y="-1590.60755239822" zoom="1.47020536592478" ScaleFactor="1" Name="Home" Description="" RunType="Manual" RunPeriod="1000" HasRunWithoutCrash="False">
+  <NamespaceResolutionMap />
+  <Elements>
+    <PythonNodeModels.PythonNode guid="16a28f61-e8dc-48df-814e-dc1f1b293680" type="PythonNodeModels.PythonNode" nickname="Python Script" x="2106.98784930497" y="1218.63187365691" isVisible="true" isUpstreamVisible="true" lacing="Disabled" isSelectedInput="False" IsFrozen="false" isPinned="false" inputcount="3">
+      <PortInfo index="0" default="False" />
+      <PortInfo index="1" default="False" />
+      <PortInfo index="2" default="False" />
+      <Script>import clr
+
+clr.AddReference("RevitServices")
+import RevitServices
+from RevitServices.Persistence import DocumentManager
+from RevitServices.Transactions import TransactionManager
+
+clr.AddReference("RevitAPI")
+import Autodesk
+from Autodesk.Revit.DB import *
+
+doc = DocumentManager.Instance.CurrentDBDocument
+view = doc.ActiveView
+view_id = doc.ActiveView.Id
+
+condition_switch = IN[0]
+condition_side = IN[1]
+condition_side_2 = IN[2]
+
+grids = FilteredElementCollector(doc, view_id).OfCategory(BuiltInCategory.OST_Grids).ToElements()
+
+extent_mode = DatumExtentType.ViewSpecific
+
+TransactionManager.Instance.EnsureInTransaction(doc)
+
+if grids:
+	curve = grids[0].GetCurvesInView(extent_mode, view)[0]
+	curve_1_x = curve.GetEndPoint(0).X
+	curve_1_y = curve.GetEndPoint(0).Y
+	curve_2_x = curve.GetEndPoint(1).X
+	curve_2_y = curve.GetEndPoint(1).Y
+
+count = 0
+for i in grids:
+	if condition_switch:
+		i.SetDatumExtentType(DatumEnds.End0, view, extent_mode)
+		i.SetDatumExtentType(DatumEnds.End1, view, extent_mode)
+		count += 1
+	else:
+		pass
+		
+	if not condition_side:
+		i.HideBubbleInView(DatumEnds.End0, view)
+	else:
+		i.ShowBubbleInView(DatumEnds.End0, view)
+	if not condition_side_2:
+		i.HideBubbleInView(DatumEnds.End1, view)
+	else:
+		i.ShowBubbleInView(DatumEnds.End1, view)
+
+TransactionManager.Instance.TransactionTaskDone()
+
+OUT = str(count) + " of grids extents were switched to 2D"</Script>
+    </PythonNodeModels.PythonNode>
+    <CoreNodeModels.Watch guid="c757b78c-9e80-4692-9aa8-c23f36ea72fe" type="CoreNodeModels.Watch" nickname="Result" x="2293.59721536363" y="1217.89355934988" isVisible="true" isUpstreamVisible="true" lacing="Disabled" isSelectedInput="False" IsFrozen="false" isPinned="false">
+      <PortInfo index="0" default="False" />
+    </CoreNodeModels.Watch>
+    <CoreNodeModels.Input.BoolSelector guid="0e6a951f-6928-458f-96a1-bef32dff1448" type="CoreNodeModels.Input.BoolSelector" nickname="Switch to 2D" x="1856.76343668006" y="1221.17748209457" isVisible="true" isUpstreamVisible="true" lacing="Disabled" isSelectedInput="True" IsFrozen="false" isPinned="false">
+      <System.Boolean>True</System.Boolean>
+    </CoreNodeModels.Input.BoolSelector>
+    <CoreNodeModels.Input.BoolSelector guid="0ddfa2c6-a617-46bd-91a9-b19056d6154a" type="CoreNodeModels.Input.BoolSelector" nickname="Tags On Side 1" x="1858.80396793476" y="1289.87536766954" isVisible="true" isUpstreamVisible="true" lacing="Disabled" isSelectedInput="True" IsFrozen="false" isPinned="false">
+      <System.Boolean>True</System.Boolean>
+    </CoreNodeModels.Input.BoolSelector>
+    <CoreNodeModels.Input.BoolSelector guid="e1e95cea-6ba8-4554-9f02-58aa6d0eb5fa" type="CoreNodeModels.Input.BoolSelector" nickname="Tags On Side 2" x="1858.12379084986" y="1359.2534303294" isVisible="true" isUpstreamVisible="true" lacing="Disabled" isSelectedInput="True" IsFrozen="false" isPinned="false">
+      <System.Boolean>False</System.Boolean>
+    </CoreNodeModels.Input.BoolSelector>
+  </Elements>
+  <Connectors>
+    <Dynamo.Graph.Connectors.ConnectorModel start="16a28f61-e8dc-48df-814e-dc1f1b293680" start_index="0" end="c757b78c-9e80-4692-9aa8-c23f36ea72fe" end_index="0" portType="0" />
+    <Dynamo.Graph.Connectors.ConnectorModel start="0e6a951f-6928-458f-96a1-bef32dff1448" start_index="0" end="16a28f61-e8dc-48df-814e-dc1f1b293680" end_index="0" portType="0" />
+    <Dynamo.Graph.Connectors.ConnectorModel start="0ddfa2c6-a617-46bd-91a9-b19056d6154a" start_index="0" end="16a28f61-e8dc-48df-814e-dc1f1b293680" end_index="1" portType="0" />
+    <Dynamo.Graph.Connectors.ConnectorModel start="e1e95cea-6ba8-4554-9f02-58aa6d0eb5fa" start_index="0" end="16a28f61-e8dc-48df-814e-dc1f1b293680" end_index="2" portType="0" />
+  </Connectors>
+  <Notes />
+  <Annotations />
+  <Presets />
+  <Cameras>
+    <Camera Name="Background Preview" eyeX="-17" eyeY="24" eyeZ="50" lookX="12" lookY="-13" lookZ="-58" upX="0" upY="1" upZ="0" />
+  </Cameras>
+</Workspace>

@@ -1,0 +1,145 @@
+<Workspace Version="1.3.4.6666" X="-75.1202811951716" Y="-355.546749559792" zoom="1.3231529419852" ScaleFactor="1" Name="Home" Description="" RunType="Manual" RunPeriod="1000" HasRunWithoutCrash="True">
+  <NamespaceResolutionMap />
+  <Elements>
+    <CoreNodeModels.Input.BoolSelector guid="cc5c1cf4-4a4a-4cff-bbb8-db531860568d" type="CoreNodeModels.Input.BoolSelector" nickname="Restart" x="320.824214152316" y="518.112488508822" isVisible="true" isUpstreamVisible="true" lacing="Disabled" isSelectedInput="False" IsFrozen="false" isPinned="false">
+      <System.Boolean>True</System.Boolean>
+    </CoreNodeModels.Input.BoolSelector>
+    <CoreNodeModels.Watch guid="e5d99726-d224-408f-b96e-6e9abe19054e" type="CoreNodeModels.Watch" nickname="Result" x="736.57461977565" y="519.90829604342" isVisible="true" isUpstreamVisible="true" lacing="Disabled" isSelectedInput="False" IsFrozen="false" isPinned="false">
+      <PortInfo index="0" default="False" />
+    </CoreNodeModels.Watch>
+    <PythonNodeModels.PythonNode guid="149eeb80-bf3b-4f7b-bab3-2c9d3d02e82b" type="PythonNodeModels.PythonNode" nickname="Python Script" x="547.152385301685" y="519.711812750979" isVisible="true" isUpstreamVisible="true" lacing="Disabled" isSelectedInput="False" IsFrozen="false" isPinned="false" inputcount="1">
+      <PortInfo index="0" default="False" />
+      <Script>import clr
+
+# Import RevitAPI
+clr.AddReference("RevitAPI")
+from Autodesk.Revit.DB import *
+
+clr.AddReference("RevitAPIUI")
+from Autodesk.Revit.UI.Selection import ISelectionFilter
+from Autodesk.Revit.UI.Selection import ObjectType
+
+clr.AddReference("ProtoGeometry")
+from Autodesk.DesignScript import Geometry as geom
+
+# Import DocumentManager and TransactionManager
+clr.AddReference("RevitServices")
+import RevitServices
+from RevitServices.Persistence import DocumentManager
+from RevitServices.Transactions import TransactionManager
+
+from System.Collections.Generic import List
+
+doc = DocumentManager.Instance.CurrentDBDocument
+uidoc = DocumentManager.Instance.CurrentUIApplication.ActiveUIDocument
+view = doc.ActiveView
+
+#  Selection filter for category
+class SelectionFilter(ISelectionFilter):
+    def __init__(self, category_name):
+        self.category_name = category_name
+    def AllowElement(self, e):
+        if e.Category.Name == self.category_name:
+            return True
+        else:
+            return False
+
+opts = Options()
+opts.ComputeReferences = True
+opts.IncludeNonVisibleObjects = False
+opts.View = view
+
+#  Select line by user
+line_ref = uidoc.Selection.PickObject(ObjectType.Element, SelectionFilter("Lines"), "Select Line")
+line = doc.GetElement(line_ref)
+curve = line.GeometryCurve
+
+#  Select all floors in the view
+walls = FilteredElementCollector(doc, doc.ActiveView.Id).OfClass(Wall).ToElements()
+
+#  List for intersection points
+intersections = []
+#  Some conversion
+ira = clr.StrongBox[IntersectionResultArray](IntersectionResultArray())
+#  Iterate through floors solids and get faces
+intersection_faces = []
+
+test = []
+
+trans = Transaction(doc, "Temp Parts")
+trans.Start()
+
+for w in walls:
+	wall_ids_i = List[ElementId]([w.Id])
+	try:
+		wall_parts = PartUtils.CreateParts(doc, wall_ids_i)
+		p = PartUtils.GetAssociatedParts(doc, w.Id, True, True)
+		for i in wall_parts:
+			par = i.GetParameters("Construction").AsString()
+			test.append(par)
+			if par == "Core":
+				for obj in i.get_Geometry(opts):
+					if isinstance(obj, Solid):
+						faces = obj.Faces
+						for face in faces:
+							#  Some faces are cylidrical so catch exception on FaceNormal
+							try:
+								intersection = face.Intersect(curve, ira)
+								if intersection == SetComparisonResult.Overlap:
+									point = ira.get_Item(0).XYZPoint
+									#  Collecting unique intersection points
+									intersections.append(face.Reference)
+									#  Collecting faces for spot elevations
+									intersection_faces.append(face)
+							except:
+								pass
+	except:
+		wall_ids_i = []
+		pass
+	wall_ids_i = []
+
+trans.Commit()        					
+
+#  Convert lists to ReferenceArray
+count = 0
+references = ReferenceArray()
+try:
+	references.Append(intersections[0])
+	count += 1
+except:
+	pass
+for i in intersections:
+	if i not in references:
+		references.Append(i)
+		count += 1
+if count:
+	count -= 1
+	
+count_spots = 0
+spots_move = []
+#  Start transaction
+TransactionManager.Instance.EnsureInTransaction(doc)
+#  Create dimensions
+try:
+	dim = doc.Create.NewDimension(view, curve, references)
+except:
+	pass
+#  Finish transaction    
+TransactionManager.Instance.TransactionTaskDone()
+
+#  Output
+OUT = "Dimension with " + str(count) + " segments was created."
+OUT = test</Script>
+    </PythonNodeModels.PythonNode>
+  </Elements>
+  <Connectors>
+    <Dynamo.Graph.Connectors.ConnectorModel start="cc5c1cf4-4a4a-4cff-bbb8-db531860568d" start_index="0" end="149eeb80-bf3b-4f7b-bab3-2c9d3d02e82b" end_index="0" portType="0" />
+    <Dynamo.Graph.Connectors.ConnectorModel start="149eeb80-bf3b-4f7b-bab3-2c9d3d02e82b" start_index="0" end="e5d99726-d224-408f-b96e-6e9abe19054e" end_index="0" portType="0" />
+  </Connectors>
+  <Notes />
+  <Annotations />
+  <Presets />
+  <Cameras>
+    <Camera Name="Background Preview" eyeX="-17" eyeY="24" eyeZ="50" lookX="12" lookY="-13" lookZ="-58" upX="0" upY="1" upZ="0" />
+  </Cameras>
+</Workspace>

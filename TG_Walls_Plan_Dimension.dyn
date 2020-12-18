@@ -1,0 +1,508 @@
+<Workspace Version="1.3.4.6666" X="-274.865150923235" Y="-292.762183476724" zoom="1.545620359375" ScaleFactor="1" Name="Home" Description="" RunType="Manual" RunPeriod="1000" HasRunWithoutCrash="False">
+  <NamespaceResolutionMap />
+  <Elements>
+    <PythonNodeModels.PythonNode guid="79b80bf7-f430-417c-97c7-5e6e641e0120" type="PythonNodeModels.PythonNode" nickname="Dimension by Line" x="534" y="231" isVisible="true" isUpstreamVisible="true" lacing="Disabled" isSelectedInput="False" IsFrozen="true" isPinned="false" inputcount="1">
+      <PortInfo index="0" default="False" />
+      <Script>import clr
+
+# Import RevitAPI
+clr.AddReference("RevitAPI")
+from Autodesk.Revit.DB import *
+
+clr.AddReference("RevitAPIUI")
+from Autodesk.Revit.UI.Selection import ISelectionFilter
+from Autodesk.Revit.UI.Selection import ObjectType
+
+from Autodesk.Revit.ApplicationServices import Application
+
+# Import DocumentManager and TransactionManager
+clr.AddReference("RevitServices")
+import RevitServices
+from RevitServices.Persistence import DocumentManager
+from RevitServices.Transactions import TransactionManager
+
+from math import pi, sin, cos
+
+doc = DocumentManager.Instance.CurrentDBDocument
+uidoc = DocumentManager.Instance.CurrentUIApplication.ActiveUIDocument
+view = doc.ActiveView
+app = doc.Application
+
+
+condition = IN[0]
+tolerance = Application.AngleTolerance.GetValue(app) / 100 #  0.001 grad
+
+#  Selection filter for category
+class SelectionFilter(ISelectionFilter):
+    def __init__(self, category_name):
+        self.category_name = category_name
+    def AllowElement(self, e):
+        if e.Category.Name == self.category_name:
+            return True
+        else:
+            return False
+
+opts = Options()
+opts.ComputeReferences = True
+opts.IncludeNonVisibleObjects = False
+opts.View = view
+
+#  Select line by user
+line_ref = uidoc.Selection.PickObject(ObjectType.Element, SelectionFilter("Lines"), "Select Line")
+line = doc.GetElement(line_ref)
+curve = line.GeometryCurve
+
+ViewId = doc.ActiveView.Id # Get Id of the active view
+walls_all = FilteredElementCollector(doc, ViewId).OfCategory(BuiltInCategory.OST_Walls).ToElements() # Get all walls on the view
+str_columns_all = FilteredElementCollector(doc, ViewId).OfCategory(BuiltInCategory.OST_StructuralColumns).ToElements() # Get all structural columns on the view
+columns_all = FilteredElementCollector(doc, ViewId).OfCategory(BuiltInCategory.OST_Columns).ToElements() # Get all columns on the view
+
+#  Filter walls with no need to check
+walls = []
+for i in walls_all:
+	try:
+		temp = i.Orientation
+		walls.append(i)
+	except:
+		pass
+
+#  Get direction of line
+line_ox = abs(curve.Direction.X)
+line_oy = abs(curve.Direction.Y)
+
+#  Get lists of walls that are perpendicular
+walls_per = []
+for i in walls:
+	ox = abs(i.Orientation.X)
+	oy = abs(i.Orientation.Y)
+	#  Checking if perpendicular
+	if abs(ox - line_ox) &lt;= tolerance and abs(oy - line_oy) &lt;= tolerance:
+		walls_per.append(i)
+
+#  Get list of columns that are parallel or perpendicular
+columns_per = []
+for i in str_columns_all:
+	col_ox = cos(i.Location.Rotation)
+	col_oy = sin(i.Location.Rotation)
+	col_xy = XYZ(col_ox, col_oy, 0)
+	col_angle = col_xy.AngleTo(curve.Direction)
+	#  Checking if parallel
+	if abs(col_angle) &lt;= tolerance:
+		columns_per.append(i)
+	elif abs(col_angle - pi) &lt;= tolerance:
+		columns_per.append(i)
+	#  Checking if parallel
+	elif abs(col_angle - pi/2) &lt;= tolerance:
+		columns_per.append(i)
+
+#  List for intersection points
+intersections = []
+#  Some conversion
+ira = clr.StrongBox[IntersectionResultArray](IntersectionResultArray())
+point = XYZ(0,0,0)
+#  Iterate through walls solids and get faces
+intersection_faces = []
+for w in walls_per:
+    for obj in w.get_Geometry(opts):
+        if isinstance(obj, Solid):
+        	faces = obj.Faces
+        	for face in faces:
+        		#  Some faces are cylidrical so catch exception on FaceNormal
+        		try:
+        			#  Check if faces are vertical
+        			if round(face.FaceNormal.Z) == 0:
+        				intersection = face.Intersect(curve, ira)
+        				if intersection == SetComparisonResult.Overlap:
+    						point = ira.get_Item(0).XYZPoint
+    						#  Collecting unique intersection points
+        					intersections.append(face.Reference)
+        		except:
+        			pass
+
+#  Iterate through columns solids and get faces
+for c in columns_per:
+	for obj in c.get_Geometry(opts):
+		#for ins in obj.GetInstanceGeometry():
+		if isinstance(obj, Solid):
+			faces = obj.Faces
+			for face in faces:
+				if isinstance(face, PlanarFace):
+					#  Check if faces are vertical
+					if round(face.FaceNormal.Z) == 0:
+						intersection = face.Intersect(curve)
+						if intersection == SetComparisonResult.Overlap:
+							#  Collecting unique intersection points
+							intersections.append(face.Reference)
+						else:
+							pass
+
+#  Convert lists to ReferenceArray
+count = 0
+references = ReferenceArray()
+try:
+	references.Append(intersections[0])
+	count += 1
+except:
+	pass
+for i in intersections:
+	if i not in references:
+		references.Append(i)
+		count += 1
+if count:
+	count -= 1
+
+
+TransactionManager.Instance.EnsureInTransaction(doc)
+
+try:
+	dim = doc.Create.NewDimension(view, curve, references)
+except:
+	pass
+
+TransactionManager.Instance.TransactionTaskDone()
+
+#  Output
+OUT = "Dimension with " + str(count) + " segments was created."</Script>
+    </PythonNodeModels.PythonNode>
+    <CoreNodeModels.Input.BoolSelector guid="00a5fe22-a786-4e8b-8681-ef9e67a6a480" type="CoreNodeModels.Input.BoolSelector" nickname="Restart" x="340" y="234" isVisible="true" isUpstreamVisible="true" lacing="Disabled" isSelectedInput="False" IsFrozen="false" isPinned="false">
+      <System.Boolean>True</System.Boolean>
+    </CoreNodeModels.Input.BoolSelector>
+    <CoreNodeModels.Watch guid="fbde40b7-ff24-4023-806d-95a10da4c1a1" type="CoreNodeModels.Watch" nickname="Result" x="710.5" y="233" isVisible="true" isUpstreamVisible="true" lacing="Disabled" isSelectedInput="False" IsFrozen="false" isPinned="false">
+      <PortInfo index="0" default="False" />
+    </CoreNodeModels.Watch>
+    <PythonNodeModels.PythonNode guid="2266e146-1a61-4941-8ba3-a41a33807378" type="PythonNodeModels.PythonNode" nickname="Dimension All" x="545.587957628624" y="397.747255005441" isVisible="true" isUpstreamVisible="true" lacing="Disabled" isSelectedInput="False" IsFrozen="false" isPinned="false" inputcount="3">
+      <PortInfo index="0" default="False" />
+      <PortInfo index="1" default="False" />
+      <PortInfo index="2" default="False" />
+      <Script>import clr
+
+# Import RevitAPI
+clr.AddReference("RevitAPI")
+from Autodesk.Revit.DB import *
+
+clr.AddReference("RevitAPIUI")
+from Autodesk.Revit.UI.Selection import ISelectionFilter
+from Autodesk.Revit.UI.Selection import ObjectType
+
+from Autodesk.Revit.ApplicationServices import Application
+
+# Import DocumentManager and TransactionManager
+clr.AddReference("RevitServices")
+import RevitServices
+from RevitServices.Persistence import DocumentManager
+from RevitServices.Transactions import TransactionManager
+
+from math import pi, sin, cos
+
+doc = DocumentManager.Instance.CurrentDBDocument
+uidoc = DocumentManager.Instance.CurrentUIApplication.ActiveUIDocument
+view = doc.ActiveView
+app = doc.Application
+
+
+search_step = IN[0] / 30.48
+search_distance = IN[1] / 30.48
+stopper = IN[2]
+tolerance = Application.AngleTolerance.GetValue(app) / 100 #  0.001 grad
+
+
+def FindReferences(curve_intersect, faces_intersect):
+	#  Find faces and its references that intersects with the curve
+	
+	#  Temporary list for faces that intersects but can duplicate
+	faces_temp = []
+	#  Iterate through faces and get references
+	for face in faces_intersect:
+		intersection = face.Intersect(curve_intersect)
+		if intersection == SetComparisonResult.Overlap:
+			#  Collecting unique intersection points
+			faces_temp.append(face)
+		else:
+			pass
+	#  Convert list to ReferenceArray
+	faces = []
+	references = ReferenceArray()
+	try:
+		faces.append(faces_temp[0])
+		references.Append(faces_temp[0].Reference)
+	except:
+		pass
+	for i in faces_temp:
+		if i not in faces:
+			faces.append(i)
+			references.Append(i.Reference)
+	return faces, references
+
+
+opts = Options()
+opts.ComputeReferences = True
+opts.IncludeNonVisibleObjects = False
+opts.View = view
+
+#  Collecting model elements to dimension
+ViewId = doc.ActiveView.Id # Get Id of the active view
+walls_all = FilteredElementCollector(doc, ViewId).OfCategory(BuiltInCategory.OST_Walls).ToElements() # Get all walls on the view
+str_columns_all = FilteredElementCollector(doc, ViewId).OfCategory(BuiltInCategory.OST_StructuralColumns).ToElements() # Get all structural columns on the view
+columns_all = FilteredElementCollector(doc, ViewId).OfCategory(BuiltInCategory.OST_Columns).ToElements() # Get all columns on the view
+
+#  Filter walls with no need to check
+walls = []
+for i in walls_all:
+	try:
+		temp = i.Orientation
+		walls.append(i)
+	except:
+		pass
+
+#  Get direction of line (from view up direction)
+view_up = view.UpDirection
+line_ox = abs(view_up.X)
+line_oy = abs(view_up.Y)
+
+#  Get lists of walls that are horizontal and vertical
+walls_hor = []
+walls_ver = []
+for i in walls:
+	wall_ox = abs(i.Orientation.X)
+	wall_oy = abs(i.Orientation.Y)
+	#  Checking if horizontal
+	if abs(wall_ox - line_ox) &lt;= tolerance and abs(wall_oy - line_oy) &lt;= tolerance:
+		walls_hor.append(i)
+		#  Checking if vertical
+	if abs(wall_ox - line_oy) &lt;= tolerance and abs(wall_oy - line_ox) &lt;= tolerance:
+		walls_ver.append(i)
+
+#  Get list of columns that are horizontal or vertical
+columns_per = []
+for i in str_columns_all:
+	col_ox = cos(i.Location.Rotation)
+	col_oy = sin(i.Location.Rotation)
+	col_xy = XYZ(col_ox, col_oy, 0)
+	col_angle = col_xy.AngleTo(view_up)
+	#  Checking if parallel
+	if abs(col_angle) &lt;= tolerance:
+		columns_per.append(i)
+	elif abs(col_angle - pi) &lt;= tolerance:
+		columns_per.append(i)
+	#  Checking if parallel
+	elif abs(col_angle - pi/2) &lt;= tolerance:
+		columns_per.append(i)
+
+#  Sum columns and walls
+elements_hor = walls_hor + columns_per
+elements_ver = walls_ver + columns_per
+
+count_dim = 0
+count_ref = 0
+
+TransactionManager.Instance.EnsureInTransaction(doc)
+
+#  Get all vertical faces that need a dimension
+#  !!!  NEED ADJUSTMENT (LITTLE FACES FILTERING)
+faces_all = []
+faces_all_points = []
+for e in elements_hor:
+	for obj in e.get_Geometry(opts):
+		if isinstance(obj, Solid):
+			faces = obj.Faces
+			for face in faces:
+				#  Check if face is planar 
+				if isinstance(face, PlanarFace):
+					#  Check if face is vertical in 3D and horisontal on plan
+					if face.FaceNormal.AngleTo(view_up) &lt;= tolerance or abs(face.FaceNormal.AngleTo(view_up) - pi) &lt;= tolerance:
+						faces_all.append(face)
+						#  Get face points
+						face_points = []
+						cl = face.GetEdgesAsCurveLoops()[0]
+						for c in cl:
+							point = c.GetEndPoint(0)
+							face_points.append(point)
+						faces_all_points.append(face_points)
+
+
+#  Faces buffer for faces with no dimension yet
+faces_not_dim = faces_all
+faces_not_dim_points = faces_all_points
+
+#  Looping through faces
+stopper_i = 0
+while len(faces_not_dim) &gt; 1 and stopper_i &lt; stopper:
+	stopper_i += 1
+	
+	#  Select first face in list as default
+	face_min = faces_not_dim[0]
+	face_min_a = faces_not_dim_points[0][0]
+	face_min_b = faces_not_dim_points[0][1]
+	#  Find face with minimal coordinate and its points
+	for face, face_points in zip(faces_not_dim, faces_not_dim_points):
+		for point in face_points:
+			if point.X &lt; face_min_a.X:
+				face_min = face
+				face_min_a = point
+			if point.X &gt; face_min_b.X:
+				face_min_b = point
+	
+	#  Iterate through space between two points of face
+	#  Get max number of intersections
+	intersects_max = 0
+	faces_max = []
+	refs_max = ReferenceArray()
+	length_past = 0
+	while length_past &lt; face_min_a.DistanceTo(face_min_b):
+		#  Make two points, with coordinates from face beginning
+		#  Search distance added and multiplied to extend the line for intersections search
+		#  len_past added in X only, to move the line across the face
+		point_1 = XYZ(face_min_a.X - search_distance * view_up.X + length_past, face_min_a.Y - search_distance * view_up.Y, 0)
+		point_2 = XYZ(face_min_a.X + search_distance * view_up.X + length_past, face_min_a.Y + search_distance * view_up.Y, 0)
+		line = Line.CreateBound(point_1, point_2)
+		#  Find faces and its refs that intersect with the line
+		face_iter = FindReferences(line, faces_all)[0]
+		refs_iter = FindReferences(line, faces_all)[1]
+		if refs_iter.Size &gt; intersects_max:
+			refs_max = refs_iter
+			faces_max = face_iter
+			intersects_max = refs_max.Size
+			line_max = line
+		length_past += search_step
+	
+	#  Go to point with max intersections and make dimensions
+	try:
+		dim = doc.Create.NewDimension(view, line_max, refs_max)
+	except:
+		pass
+	finally:
+		count_dim += 1
+		count_ref += refs_max.Size - 1
+		
+		#  Remove dimensioned faces from buffer faces_not_dim
+		faces_temp = []
+		points_temp = []
+		for i in range(len(faces_not_dim)):
+			if faces_not_dim[i] not in faces_max:
+				faces_temp.append(faces_not_dim[i])
+				points_temp.append(faces_not_dim_points[i])
+		faces_not_dim = faces_temp
+		faces_not_dim_points = points_temp
+
+
+
+#  Get all vertical faces that need a dimension
+#  !!!  NEED ADJUSTMENT (LITTLE FACES FILTERING)
+faces_all = []
+faces_all_points = []
+for e in elements_ver:
+	for obj in e.get_Geometry(opts):
+		if isinstance(obj, Solid):
+			faces = obj.Faces
+			for face in faces:
+				#  Check if face is planar 
+				if isinstance(face, PlanarFace):
+					#  Check if face is and vertical in 3D and horisontal on plan
+					if abs(face.FaceNormal.AngleTo(view_up) - pi/2) &lt;= tolerance and not abs(face.FaceNormal.Z) == 1:
+						faces_all.append(face)
+						#  Get face points
+						face_points = []
+						cl = face.GetEdgesAsCurveLoops()[0]
+						for c in cl:
+							point = c.GetEndPoint(0)
+							face_points.append(point)
+						faces_all_points.append(face_points)
+
+#  Faces buffer for faces with no dimension yet
+faces_not_dim = faces_all
+faces_not_dim_points = faces_all_points
+
+
+#  Looping through faces
+stopper_i = 0
+while len(faces_not_dim) &gt; 1 and stopper_i &lt; stopper:
+	stopper_i += 1
+	
+	#  Select first face in list as default
+	face_min = faces_not_dim[0]
+	face_min_a = faces_not_dim_points[0][0]
+	face_min_b = faces_not_dim_points[0][1]
+	#  Find face with minimal coordinate and its points
+	for face, face_points in zip(faces_not_dim, faces_not_dim_points):
+		for point in face_points:
+			if point.Y &lt; face_min_a.Y:
+				face_min = face
+				face_min_a = point
+			if point.Y &gt; face_min_b.Y:
+				face_min_b = point
+	
+	#  Iterate through space between two points of face
+	#  Get max number of intersections
+	intersects_max = 0
+	faces_max = []
+	refs_max = ReferenceArray()
+	length_past = 0
+	while length_past &lt; face_min_a.DistanceTo(face_min_b):
+		#  Make two points, with coordinates from face beginning
+		#  Search distance added and multiplied to extend the line for intersections search
+		#  len_past added in X only, to move the line across the face
+		point_1 = XYZ(face_min_a.X - search_distance * view_up.Y, face_min_a.Y + search_distance * view_up.X + length_past, 0)
+		point_2 = XYZ(face_min_a.X + search_distance * view_up.Y, face_min_a.Y - search_distance * view_up.X + length_past, 0)
+		line = Line.CreateBound(point_1, point_2)
+		#  Find faces and its refs that intersect with the line
+		face_iter = FindReferences(line, faces_all)[0]
+		refs_iter = FindReferences(line, faces_all)[1]
+		if refs_iter.Size &gt; intersects_max:
+			refs_max = refs_iter
+			faces_max = face_iter
+			intersects_max = refs_max.Size
+			line_max = line
+		length_past += search_step
+	
+	#  Go to point with max intersections and make dimensions
+	try:
+		dim = doc.Create.NewDimension(view, line_max, refs_max)
+	except:
+		pass
+	finally:
+		count_dim += 1
+		count_ref += refs_max.Size - 1
+		
+		#  Remove dimensioned faces from buffer faces_not_dim
+		faces_temp = []
+		points_temp = []
+		for i in range(len(faces_not_dim)):
+			if faces_not_dim[i] not in faces_max:
+				faces_temp.append(faces_not_dim[i])
+				points_temp.append(faces_not_dim_points[i])
+		faces_not_dim = faces_temp
+		faces_not_dim_points = points_temp
+		
+TransactionManager.Instance.TransactionTaskDone()
+
+#  Output
+OUT = str(count_dim) + " dimensions with " + str(count_ref) + " segments was created."</Script>
+    </PythonNodeModels.PythonNode>
+    <CoreNodeModels.Input.DoubleInput guid="de0337d6-46cc-4b83-a661-4c64327c0744" type="CoreNodeModels.Input.DoubleInput" nickname="Searching Step" x="379.5" y="395.824084742753" isVisible="true" isUpstreamVisible="true" lacing="Disabled" isSelectedInput="True" IsFrozen="false" isPinned="false">
+      <System.Double value="15" />
+    </CoreNodeModels.Input.DoubleInput>
+    <CoreNodeModels.Watch guid="ea776e8a-2719-42ef-8320-100cfb9568e8" type="CoreNodeModels.Watch" nickname="Result" x="721.5" y="396.8205445077" isVisible="true" isUpstreamVisible="true" lacing="Disabled" isSelectedInput="False" IsFrozen="false" isPinned="false">
+      <PortInfo index="0" default="False" />
+    </CoreNodeModels.Watch>
+    <CoreNodeModels.Input.DoubleInput guid="ea6feee4-d1e1-4930-a248-45c4ddb9cad9" type="CoreNodeModels.Input.DoubleInput" nickname="Searching Distance" x="354.510979978236" y="472.076859847653" isVisible="true" isUpstreamVisible="true" lacing="Disabled" isSelectedInput="True" IsFrozen="false" isPinned="false">
+      <System.Double value="2000.000" />
+    </CoreNodeModels.Input.DoubleInput>
+    <CoreNodeModels.Input.DoubleInput guid="0e74967e-e416-4298-93ef-37ddf001b18a" type="CoreNodeModels.Input.DoubleInput" nickname="Stopper" x="398.981694855068" y="538.752072102359" isVisible="true" isUpstreamVisible="true" lacing="Disabled" isSelectedInput="False" IsFrozen="false" isPinned="false">
+      <System.Double value="1000" />
+    </CoreNodeModels.Input.DoubleInput>
+  </Elements>
+  <Connectors>
+    <Dynamo.Graph.Connectors.ConnectorModel start="79b80bf7-f430-417c-97c7-5e6e641e0120" start_index="0" end="fbde40b7-ff24-4023-806d-95a10da4c1a1" end_index="0" portType="0" />
+    <Dynamo.Graph.Connectors.ConnectorModel start="00a5fe22-a786-4e8b-8681-ef9e67a6a480" start_index="0" end="79b80bf7-f430-417c-97c7-5e6e641e0120" end_index="0" portType="0" />
+    <Dynamo.Graph.Connectors.ConnectorModel start="2266e146-1a61-4941-8ba3-a41a33807378" start_index="0" end="ea776e8a-2719-42ef-8320-100cfb9568e8" end_index="0" portType="0" />
+    <Dynamo.Graph.Connectors.ConnectorModel start="de0337d6-46cc-4b83-a661-4c64327c0744" start_index="0" end="2266e146-1a61-4941-8ba3-a41a33807378" end_index="0" portType="0" />
+    <Dynamo.Graph.Connectors.ConnectorModel start="ea6feee4-d1e1-4930-a248-45c4ddb9cad9" start_index="0" end="2266e146-1a61-4941-8ba3-a41a33807378" end_index="1" portType="0" />
+    <Dynamo.Graph.Connectors.ConnectorModel start="0e74967e-e416-4298-93ef-37ddf001b18a" start_index="0" end="2266e146-1a61-4941-8ba3-a41a33807378" end_index="2" portType="0" />
+  </Connectors>
+  <Notes />
+  <Annotations />
+  <Presets />
+  <Cameras>
+    <Camera Name="Background Preview" eyeX="-17" eyeY="24" eyeZ="50" lookX="12" lookY="-13" lookZ="-58" upX="0" upY="1" upZ="0" />
+  </Cameras>
+</Workspace>

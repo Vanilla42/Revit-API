@@ -1,0 +1,286 @@
+{
+  "Uuid": "3c9d0464-8643-5ffe-96e5-ab1769818209",
+  "IsCustomNode": false,
+  "Description": "",
+  "Name": "TG_Floors_Section_Dimension",
+  "ElementResolver": {
+    "ResolutionMap": {}
+  },
+  "Inputs": [
+    {
+      "Id": "cc5c1cf44a4a4cffbbb8db531860568d",
+      "Name": "Spot Elevations",
+      "Type": "boolean",
+      "Value": "true",
+      "Description": "Selection between a true and false."
+    },
+    {
+      "Id": "d82591e7db9d4af9ad6b2e2c6834cfe0",
+      "Name": "Topping Thickness",
+      "Type": "number",
+      "Value": "0",
+      "NumberType": "Double",
+      "Description": "Creates a number."
+    },
+    {
+      "Id": "de9016ac4dad4b9687a8b928d63a306f",
+      "Name": "Spot Offset",
+      "Type": "number",
+      "Value": "1",
+      "MaximumValue": 10.0,
+      "MinimumValue": -10.0,
+      "StepValue": 0.1,
+      "NumberType": "Double",
+      "Description": "A slider that produces numeric values."
+    }
+  ],
+  "Outputs": [],
+  "Nodes": [
+    {
+      "ConcreteType": "CoreNodeModels.Input.BoolSelector, CoreNodeModels",
+      "NodeType": "BooleanInputNode",
+      "InputValue": true,
+      "Id": "cc5c1cf44a4a4cffbbb8db531860568d",
+      "Inputs": [],
+      "Outputs": [
+        {
+          "Id": "f4f179c0ffd8453bbfe4add5751a3e7a",
+          "Name": "",
+          "Description": "Boolean",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Selection between a true and false."
+    },
+    {
+      "ConcreteType": "CoreNodeModels.Watch, CoreNodeModels",
+      "NodeType": "ExtensionNode",
+      "Id": "e5d99726d224408fb96e6e9abe19054e",
+      "Inputs": [
+        {
+          "Id": "0408269c133443218fd7525eb21e01b5",
+          "Name": "",
+          "Description": "Node to evaluate.",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Outputs": [
+        {
+          "Id": "2d43da36fb764cd88bd0ba1eca83f4b0",
+          "Name": "",
+          "Description": "Watch contents.",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Visualize the output of node."
+    },
+    {
+      "ConcreteType": "PythonNodeModels.PythonNode, PythonNodeModels",
+      "NodeType": "PythonScriptNode",
+      "Code": "import clr\n\n# Import RevitAPI\nclr.AddReference(\"RevitAPI\")\nfrom Autodesk.Revit.DB import *\n\nclr.AddReference(\"RevitAPIUI\")\nfrom Autodesk.Revit.UI.Selection import ISelectionFilter\nfrom Autodesk.Revit.UI.Selection import ObjectType\n\nclr.AddReference(\"ProtoGeometry\")\nfrom Autodesk.DesignScript import Geometry as geom\n\n# Import DocumentManager and TransactionManager\nclr.AddReference(\"RevitServices\")\nimport RevitServices\nfrom RevitServices.Persistence import DocumentManager\nfrom RevitServices.Transactions import TransactionManager\n\ndoc = DocumentManager.Instance.CurrentDBDocument\nuidoc = DocumentManager.Instance.CurrentUIApplication.ActiveUIDocument\nview = doc.ActiveView\n\ncondition = IN[0]\nthickness = IN[1] / 30.48  #  Thickness of floor that recognize as concrete\noffset = IN[2] / 30.48  #  Offset for spot elevations on thin floors\n\n#  Selection filter for category\nclass SelectionFilter(ISelectionFilter):\n    def __init__(self, category_name):\n        self.category_name = category_name\n    def AllowElement(self, e):\n        if e.Category.Name == self.category_name:\n            return True\n        else:\n            return False\n\nopts = Options()\nopts.ComputeReferences = True\nopts.IncludeNonVisibleObjects = False\nopts.View = view\n\n#  Transforming offset to world coordinates\nview_dir_x = view.ViewDirection.X\nview_dir_y = view.ViewDirection.Y\noffset_scaled_x = offset * view.Scale * view_dir_x\noffset_scaled_y = offset * view.Scale * view_dir_y\noff = XYZ(0 - offset_scaled_y, offset_scaled_x, 0)\n\n#  Select line by user\nline_ref = uidoc.Selection.PickObject(ObjectType.Element, SelectionFilter(\"Lines\"), \"Select Line\")\nline = doc.GetElement(line_ref)\ncurve = line.GeometryCurve\n\n#  Select all floors in the view\nfloors = FilteredElementCollector(doc, doc.ActiveView.Id).OfClass(Floor).ToElements()\n\n#  Divide floors to thick and thin for spot elevations arrangement\nfloors_thin = []\nfloors_thick = []\nfor f in floors:\n\tf_type = f.FloorType\n\tf_thick = f_type.get_Parameter(BuiltInParameter.FLOOR_ATTR_DEFAULT_THICKNESS_PARAM).AsDouble()\n\tif f_thick > thickness:\n\t\tfloors_thick.append(f)\n\telse:\n\t\tfloors_thin.append(f)\n\n#  List for intersection points\nintersections_thick_top = []\nintersections_thick_bot = []\n#  Some conversion\nira = clr.StrongBox[IntersectionResultArray](IntersectionResultArray())\npoint = XYZ(0,0,0)\n#  Iterate through floors solids and get faces\nintersection_faces_thick_top = []\nintersection_faces_thick_bot = []\nfor f in floors_thick:\n    for obj in f.get_Geometry(opts):\n        if isinstance(obj, Solid):\n        \tfaces = obj.Faces\n        \tfor face in faces:\n        \t\t#  Some faces are cylidrical so catch exception on FaceNormal\n        \t\ttry:\n        \t\t\t#  Check if faces are horisontal\n        \t\t\tif round(face.FaceNormal.X) == 0 and round(face.FaceNormal.Y) == 0 and round(face.FaceNormal.Z) == 1:\n        \t\t\t\tintersection = face.Intersect(curve, ira)\n        \t\t\t\tif intersection == SetComparisonResult.Overlap:\n    \t\t\t\t\t\tpoint = ira.get_Item(0).XYZPoint\n    \t\t\t\t\t\t#  Collecting unique intersection points\n        \t\t\t\t\tintersections_thick_top.append(face.Reference)\n        \t\t\t\t\t#  Collecting faces for spot elevations\n        \t\t\t\t\tintersection_faces_thick_top.append(face)\n        \t\t\tif round(face.FaceNormal.X) == 0 and round(face.FaceNormal.Y) == 0 and round(face.FaceNormal.Z) == -1:\n        \t\t\t\tintersection = face.Intersect(curve, ira)\n        \t\t\t\tif intersection == SetComparisonResult.Overlap:\n    \t\t\t\t\t\tpoint = ira.get_Item(0).XYZPoint\n    \t\t\t\t\t\t#  Collecting unique intersection points\n        \t\t\t\t\tintersections_thick_bot.append(face.Reference)\n        \t\t\t\t\t#  Collecting faces for spot elevations\n        \t\t\t\t\tintersection_faces_thick_bot.append(face)\n        \t\texcept:\n        \t\t\tpass\n\n\n#  List for intersection points\nintersections_thin = []\n#  Some conversion\nira = clr.StrongBox[IntersectionResultArray](IntersectionResultArray())\n#  Iterate through floors solids and get faces\nintersection_faces_thin = []\nfor f in floors_thin:\n    for obj in f.get_Geometry(opts):\n        if isinstance(obj, Solid):\n        \tfaces = obj.Faces\n        \tfor face in faces:\n        \t\t#  Some faces are cylidrical so catch exception on FaceNormal\n        \t\ttry:\n        \t\t\t#  Check if faces are horisontal AND looking up\n        \t\t\tif round(face.FaceNormal.X) == 0 and round(face.FaceNormal.Y) == 0 and round(face.FaceNormal.Z) == 1:\n        \t\t\t\tintersection = face.Intersect(curve, ira)\n        \t\t\t\tif intersection == SetComparisonResult.Overlap:\n    \t\t\t\t\t\tpoint = ira.get_Item(0).XYZPoint\n    \t\t\t\t\t\t#  Collecting unique intersection points\n        \t\t\t\t\tintersections_thin.append(face.Reference)\n        \t\t\t\t\t#  Collecting faces for spot elevations\n        \t\t\t\t\tintersection_faces_thin.append(face)\n        \t\texcept:\n        \t\t\tpass\n\n\n\n#  Convert lists to ReferenceArray\ncount = 0\nreferences = ReferenceArray()\ntry:\n\treferences.Append(intersections_thick_top[0])\n\tcount += 1\nexcept:\n\tpass\nfor i in intersections_thick_top:\n\tif i not in references:\n\t\treferences.Append(i)\n\t\tcount += 1\n\ntry:\n\treferences.Append(intersections_thick_bot[0])\n\tcount += 1\nexcept:\n\tpass\nfor i in intersections_thick_bot:\n\tif i not in references:\n\t\treferences.Append(i)\n\t\tcount += 1\ntry:\n\treferences.Append(intersections_thin[0])\n\tcount += 1\nexcept:\n\tpass\nfor i in intersections_thin:\n\tif i not in references:\n\t\treferences.Append(i)\n\t\tcount += 1\nif count:\n\tcount -= 1\n\ncount_spots = 0\nspots_move = []\n#  Start transaction\nTransactionManager.Instance.EnsureInTransaction(doc)\n#  Create dimensions\nif condition:\n\torigin_x = point.X\n\torigin_y = point.Y\n\tbend = XYZ(0, 0, 0)\n\tend = XYZ(0, 0, 0)\n\t#  Spots for thick floors\n\tfor i, j in zip(intersections_thick_top, intersection_faces_thick_top):\n\t\torigin_z = j.Origin.Z\n\t\torigin = XYZ(origin_x, origin_y, origin_z)\n\t\ttry:\n\t\t\tspot = doc.Create.NewSpotElevation(view, i, origin, bend, end, origin, False)\n\t\t\tcount_spots += 1\n\t\texcept:\n\t\t\tpass\n\tfor i, j in zip(intersections_thick_bot, intersection_faces_thick_bot):\n\t\torigin_z = j.Origin.Z\n\t\torigin = XYZ(origin_x, origin_y, origin_z)\n\t\ttry:\n\t\t\tspot = doc.Create.NewSpotElevation(view, i, origin, bend, end, origin, False)\n\t\t\tcount_spots += 1\n\t\texcept:\n\t\t\tpass\n\t\t#  Flipping tag\n\t\tid = spot.Id\n\t\tplane = j.GetSurface()\n\t\tElementTransformUtils.MirrorElement(doc, id, plane)\n\t#  Spots for thin floors\n\tfor i, j in zip(intersections_thin, intersection_faces_thin):\n\t\torigin_z = j.Origin.Z\n\t\torigin = XYZ(origin_x, origin_y, origin_z)\n\t\ttry:\n\t\t\tspot = doc.Create.NewSpotElevation(view, i, origin, bend, end, origin, False)\n\t\t\tcount_spots += 1\n\t\texcept:\n\t\t\tpass\n\t\tspots_move.append(spot)\n\t#  Moving tags\n\tfor m in spots_move:\n\t\tm.Location.Move(off)\nelse:\n\ttry:\n\t\tdim = doc.Create.NewDimension(view, curve, references)\n\texcept:\n\t\tpass\n#  Finish transaction    \nTransactionManager.Instance.TransactionTaskDone()\n\n#  Output\nif condition:\n\tOUT = str(count_spots) + \" spot elevations were created.\"\nelse:\n\tOUT = \"Dimension with \" + str(count) + \" segments was created.\"",
+      "VariableInputPorts": true,
+      "Id": "149eeb80bf3b4f7bbab32c9d3d02e82b",
+      "Inputs": [
+        {
+          "Id": "32e555f41fb84459b7156af02fb7ae96",
+          "Name": "IN[0]",
+          "Description": "Input #0",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        },
+        {
+          "Id": "ecffa4e37a9d47da94ba86ea0c92ce08",
+          "Name": "IN[1]",
+          "Description": "Input #1",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        },
+        {
+          "Id": "6a21f9db29a44c96aaaf80c4847bfc0d",
+          "Name": "IN[2]",
+          "Description": "Input #2",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Outputs": [
+        {
+          "Id": "5c13cd3e19a3435cb42d4f85514c9762",
+          "Name": "OUT",
+          "Description": "Result of the python script",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Runs an embedded IronPython script."
+    },
+    {
+      "ConcreteType": "CoreNodeModels.Input.DoubleInput, CoreNodeModels",
+      "NodeType": "NumberInputNode",
+      "NumberType": "Double",
+      "InputValue": 0.0,
+      "Id": "d82591e7db9d4af9ad6b2e2c6834cfe0",
+      "Inputs": [],
+      "Outputs": [
+        {
+          "Id": "24095498224a40d794d32bde66d21d56",
+          "Name": "",
+          "Description": "Double",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Creates a number."
+    },
+    {
+      "ConcreteType": "CoreNodeModels.Input.DoubleSlider, CoreNodeModels",
+      "NodeType": "NumberInputNode",
+      "NumberType": "Double",
+      "MaximumValue": 10.0,
+      "MinimumValue": -10.0,
+      "StepValue": 0.1,
+      "InputValue": 1.0,
+      "Id": "de9016ac4dad4b9687a8b928d63a306f",
+      "Inputs": [],
+      "Outputs": [
+        {
+          "Id": "8cb6e9a33fe64d97a8fc9471441dc35d",
+          "Name": "",
+          "Description": "Double",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "A slider that produces numeric values."
+    }
+  ],
+  "Connectors": [
+    {
+      "Start": "f4f179c0ffd8453bbfe4add5751a3e7a",
+      "End": "32e555f41fb84459b7156af02fb7ae96",
+      "Id": "4b4e6338daf44925aa4035269d52ee0d"
+    },
+    {
+      "Start": "5c13cd3e19a3435cb42d4f85514c9762",
+      "End": "0408269c133443218fd7525eb21e01b5",
+      "Id": "a0baab8a27044761a55fe08bd0782feb"
+    },
+    {
+      "Start": "24095498224a40d794d32bde66d21d56",
+      "End": "ecffa4e37a9d47da94ba86ea0c92ce08",
+      "Id": "b7680d4ce25347f1ab4212dcc22042aa"
+    },
+    {
+      "Start": "8cb6e9a33fe64d97a8fc9471441dc35d",
+      "End": "6a21f9db29a44c96aaaf80c4847bfc0d",
+      "Id": "2c130f7c11674efd879885232f184099"
+    }
+  ],
+  "Dependencies": [],
+  "NodeLibraryDependencies": [],
+  "Bindings": [],
+  "View": {
+    "Dynamo": {
+      "ScaleFactor": 1.0,
+      "HasRunWithoutCrash": true,
+      "IsVisibleInDynamoLibrary": true,
+      "Version": "2.3.0.5885",
+      "RunType": "Manual",
+      "RunPeriod": "1000"
+    },
+    "Camera": {
+      "Name": "Background Preview",
+      "EyeX": -17.0,
+      "EyeY": 24.0,
+      "EyeZ": 50.0,
+      "LookX": 12.0,
+      "LookY": -13.0,
+      "LookZ": -58.0,
+      "UpX": 0.0,
+      "UpY": 1.0,
+      "UpZ": 0.0
+    },
+    "NodeViews": [
+      {
+        "ShowGeometry": true,
+        "Name": "Spot Elevations",
+        "Id": "cc5c1cf44a4a4cffbbb8db531860568d",
+        "IsSetAsInput": true,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "X": 318.556902562849,
+        "Y": 465.964321951088
+      },
+      {
+        "ShowGeometry": true,
+        "Name": "Result",
+        "Id": "e5d99726d224408fb96e6e9abe19054e",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "X": 736.57461977565,
+        "Y": 519.90829604342
+      },
+      {
+        "ShowGeometry": true,
+        "Name": "Python Script",
+        "Id": "149eeb80bf3b4f7bbab32c9d3d02e82b",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "X": 547.152385301685,
+        "Y": 519.711812750979
+      },
+      {
+        "ShowGeometry": true,
+        "Name": "Topping Thickness",
+        "Id": "d82591e7db9d4af9ad6b2e2c6834cfe0",
+        "IsSetAsInput": true,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "X": 329.600964584932,
+        "Y": 546.769932261288
+      },
+      {
+        "ShowGeometry": true,
+        "Name": "Spot Offset",
+        "Id": "de9016ac4dad4b9687a8b928d63a306f",
+        "IsSetAsInput": true,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "X": 155.939479141049,
+        "Y": 632.250974319158
+      }
+    ],
+    "Annotations": [],
+    "X": -219.746693035531,
+    "Y": -342.88310851867,
+    "Zoom": 0.988548899604766
+  }
+}

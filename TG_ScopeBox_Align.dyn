@@ -1,0 +1,83 @@
+<Workspace Version="1.3.4.6666" X="0" Y="0" zoom="1" ScaleFactor="1" Name="Home" Description="" RunType="Automatic" RunPeriod="1000" HasRunWithoutCrash="True">
+  <NamespaceResolutionMap />
+  <Elements>
+    <PythonNodeModels.PythonNode guid="b9e2982d-573e-4b6d-b75a-7fb917dec2ae" type="PythonNodeModels.PythonNode" nickname="Python Script" x="602.5" y="358" isVisible="true" isUpstreamVisible="true" lacing="Disabled" isSelectedInput="False" IsFrozen="false" isPinned="false" inputcount="3">
+      <PortInfo index="0" default="False" />
+      <PortInfo index="1" default="False" />
+      <PortInfo index="2" default="False" />
+      <Script>import clr
+clr.AddReference("RevitNodes")
+clr.AddReference("RevitServices")
+import RevitServices
+from RevitServices.Persistence import DocumentManager
+from RevitServices.Transactions import TransactionManager
+
+clr.AddReference("RevitAPI")
+import Autodesk
+from Autodesk.Revit.DB import *
+
+from math import cos, acos, degrees, pi
+
+doc = DocumentManager.Instance.CurrentDBDocument
+uidoc = DocumentManager.Instance.CurrentUIApplication.ActiveUIDocument
+view = doc.ActiveView
+
+opt = Options()
+
+box = UnwrapElement(IN[0])
+line = UnwrapElement(IN[1])
+
+box_geom = box.get_Geometry(opt)
+box_lines = [x.Direction for x in box_geom]
+box_line = box_lines[1]
+box_line_angle = acos(box_line.X)
+if box_line.Y &lt; 0:
+	box_line_angle = 2 * pi - box_line_angle
+
+line_dir = line.Location.Curve.Direction
+line_dir_angle = acos(line_dir.X)
+if line_dir.X &lt; 0:
+	line_dir_angle = 2 * pi - line_dir_angle
+
+angle = line_dir_angle - box_line_angle # !!!!! NEED TO BE FIXED
+if angle &gt; pi:
+	angle -= pi
+angle_string = str(degrees(angle))[:5]
+
+axis_x = (box.get_BoundingBox(view).Min.X + box.get_BoundingBox(view).Max.X) / 2
+axis_y = (box.get_BoundingBox(view).Min.Y + box.get_BoundingBox(view).Max.Y) / 2
+axis_p_1 = XYZ(axis_x, axis_y, 0)
+axis_p_2 = XYZ(axis_x, axis_y, 1000)
+axis = Line.CreateBound(axis_p_1, axis_p_2)
+
+TransactionManager.Instance.EnsureInTransaction(doc)
+	
+box.Location.Rotate(axis, angle)
+
+TransactionManager.Instance.TransactionTaskDone()
+
+
+OUT = "Scope Box rotated on " + angle_string + " degrees."</Script>
+    </PythonNodeModels.PythonNode>
+    <Dynamo.Nodes.DSModelElementSelection guid="489c5640-f54a-464c-b918-39fb7ce78d39" type="Dynamo.Nodes.DSModelElementSelection" nickname="Select Scope Box" x="354.5" y="297" isVisible="true" isUpstreamVisible="true" lacing="Disabled" isSelectedInput="True" IsFrozen="false" isPinned="false" />
+    <Dynamo.Nodes.DSModelElementSelection guid="3efc169a-8ac6-4842-9f88-a9cef5c9443e" type="Dynamo.Nodes.DSModelElementSelection" nickname="Select Line" x="354.5" y="419" isVisible="true" isUpstreamVisible="true" lacing="Disabled" isSelectedInput="True" IsFrozen="false" isPinned="false" />
+    <CoreNodeModels.Input.BoolSelector guid="265557a2-1da9-447e-b16c-8cc6d86a0ca6" type="CoreNodeModels.Input.BoolSelector" nickname="Restart" x="387.5" y="544" isVisible="true" isUpstreamVisible="true" lacing="Disabled" isSelectedInput="False" IsFrozen="false" isPinned="false">
+      <System.Boolean>False</System.Boolean>
+    </CoreNodeModels.Input.BoolSelector>
+    <CoreNodeModels.Watch guid="bf738834-d60e-46f5-8a7e-7e2a64fc6eaa" type="CoreNodeModels.Watch" nickname="Result" x="790.5" y="359" isVisible="true" isUpstreamVisible="true" lacing="Disabled" isSelectedInput="False" IsFrozen="false" isPinned="false">
+      <PortInfo index="0" default="False" />
+    </CoreNodeModels.Watch>
+  </Elements>
+  <Connectors>
+    <Dynamo.Graph.Connectors.ConnectorModel start="b9e2982d-573e-4b6d-b75a-7fb917dec2ae" start_index="0" end="bf738834-d60e-46f5-8a7e-7e2a64fc6eaa" end_index="0" portType="0" />
+    <Dynamo.Graph.Connectors.ConnectorModel start="489c5640-f54a-464c-b918-39fb7ce78d39" start_index="0" end="b9e2982d-573e-4b6d-b75a-7fb917dec2ae" end_index="0" portType="0" />
+    <Dynamo.Graph.Connectors.ConnectorModel start="3efc169a-8ac6-4842-9f88-a9cef5c9443e" start_index="0" end="b9e2982d-573e-4b6d-b75a-7fb917dec2ae" end_index="1" portType="0" />
+    <Dynamo.Graph.Connectors.ConnectorModel start="265557a2-1da9-447e-b16c-8cc6d86a0ca6" start_index="0" end="b9e2982d-573e-4b6d-b75a-7fb917dec2ae" end_index="2" portType="0" />
+  </Connectors>
+  <Notes />
+  <Annotations />
+  <Presets />
+  <Cameras>
+    <Camera Name="Background Preview" eyeX="-17" eyeY="24" eyeZ="50" lookX="12" lookY="-13" lookZ="-58" upX="0" upY="1" upZ="0" />
+  </Cameras>
+</Workspace>

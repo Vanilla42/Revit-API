@@ -1,0 +1,597 @@
+<Workspace Version="1.3.4.6666" X="1081.29978695599" Y="62.3000010405266" zoom="0.594053315602367" ScaleFactor="1" Name="Home" Description="" RunType="Manual" RunPeriod="1000" HasRunWithoutCrash="False">
+  <NamespaceResolutionMap />
+  <Elements>
+    <PythonNodeModels.PythonNode guid="2ee147f0-9df7-4425-9123-b959a2442b39" type="PythonNodeModels.PythonNode" nickname="Prefix" x="-598.625320220398" y="159.17390388483" isVisible="true" isUpstreamVisible="true" lacing="Disabled" isSelectedInput="False" IsFrozen="false" isPinned="false" inputcount="2">
+      <PortInfo index="0" default="False" />
+      <PortInfo index="1" default="False" />
+      <Script>import clr
+clr.AddReference('RevitServices')
+import RevitServices
+from RevitServices.Persistence import DocumentManager
+from RevitServices.Transactions import TransactionManager
+
+clr.AddReference('RevitAPI')
+
+import Autodesk
+from Autodesk.Revit.DB import *
+from Autodesk.Revit.DB import FilteredElementCollector
+from Autodesk.Revit.DB.Architecture import *
+
+doc = DocumentManager.Instance.CurrentDBDocument
+
+prefix = IN[0]
+condition = IN[1]
+
+def Checking(class_name):
+	global prefix
+	count = 0
+	elements = FilteredElementCollector(doc).OfClass(class_name).ToElements()
+	for i in elements:
+		i_name = Element.Name.GetValue(i).ToString()
+		if not i_name.startswith(prefix):
+			count += 1
+	return count
+
+if condition:
+	count = 0
+	#  Loadable families
+	count += Checking(Family)
+	
+	#  System architecture families
+	count += Checking(WallType)
+	count += Checking(WallFoundationType)
+	count += Checking(RoofType)
+	count += Checking(FasciaType)
+	count += Checking(GutterType)
+	count += Checking(CeilingType)
+	count += Checking(CurtainSystemType)
+	count += Checking(PanelType)
+	count += Checking(ContinuousRailType)
+	count += Checking(StairsType)
+	count += Checking(StairsRunType)
+	count += Checking(StairsLandingType)
+	count += Checking(AreaScheme)
+	count += Checking(LevelType)
+	count += Checking(GridType)
+	
+	#  System annotate families
+	count += Checking(DimensionType)
+	count += Checking(SpotDimensionType)
+	count += Checking(FilledRegionType)
+	count += Checking(TextNoteType)
+	
+	#  System landscape families
+	count += Checking(BuildingPadType)
+	
+	#  Other
+	count += Checking(BrowserOrganization)
+	count += Checking(LinePatternElement)
+	count += Checking(GroupType)
+	count += Checking(ViewSchedule)
+	
+	OUT = str(count) + " elements without correct prefix"
+	
+else:
+	OUT = "Prefix check is off."</Script>
+    </PythonNodeModels.PythonNode>
+    <CoreNodeModels.Input.BoolSelector guid="a9a001a5-7d01-41b1-a7a8-8c99c7fe7aee" type="CoreNodeModels.Input.BoolSelector" nickname="Prefix" x="-904.310502282648" y="185.293945721869" isVisible="true" isUpstreamVisible="true" lacing="Disabled" isSelectedInput="True" IsFrozen="false" isPinned="false">
+      <System.Boolean>False</System.Boolean>
+    </CoreNodeModels.Input.BoolSelector>
+    <CoreNodeModels.Input.StringInput guid="18504c91-cd6b-44d1-a260-acf60b1e2284" type="CoreNodeModels.Input.StringInput" nickname="Prefix" x="-702.303252154128" y="127.962487764163" isVisible="true" isUpstreamVisible="true" lacing="Disabled" isSelectedInput="True" IsFrozen="false" isPinned="false">
+      <System.String>TG</System.String>
+      <System.String value="TG" />
+    </CoreNodeModels.Input.StringInput>
+    <CoreNodeModels.Input.BoolSelector guid="94fb87d6-335d-4745-a192-f83d03be2e65" type="CoreNodeModels.Input.BoolSelector" nickname="Groups" x="-904.310502282648" y="274.778076393284" isVisible="true" isUpstreamVisible="true" lacing="Disabled" isSelectedInput="True" IsFrozen="false" isPinned="false">
+      <System.Boolean>False</System.Boolean>
+    </CoreNodeModels.Input.BoolSelector>
+    <CoreNodeModels.Input.BoolSelector guid="6d3eab79-7fb2-46f9-80bd-e17a0f4f5517" type="CoreNodeModels.Input.BoolSelector" nickname="Unused Linestyles" x="-904.310502282648" y="364.2622070647" isVisible="true" isUpstreamVisible="true" lacing="Disabled" isSelectedInput="False" IsFrozen="false" isPinned="false">
+      <System.Boolean>False</System.Boolean>
+    </CoreNodeModels.Input.BoolSelector>
+    <CoreNodeModels.Input.BoolSelector guid="54f5bb07-5305-41a8-b469-ddad24a93d23" type="CoreNodeModels.Input.BoolSelector" nickname="Rooms" x="-904.310502282648" y="453.746337736116" isVisible="true" isUpstreamVisible="true" lacing="Disabled" isSelectedInput="False" IsFrozen="false" isPinned="false">
+      <System.Boolean>False</System.Boolean>
+    </CoreNodeModels.Input.BoolSelector>
+    <CoreNodeModels.Input.BoolSelector guid="be4209c9-6078-4b6d-816f-723aeb04cf78" type="CoreNodeModels.Input.BoolSelector" nickname="Warnings" x="-904.310502282648" y="543.230468407532" isVisible="true" isUpstreamVisible="true" lacing="Disabled" isSelectedInput="False" IsFrozen="false" isPinned="false">
+      <System.Boolean>False</System.Boolean>
+    </CoreNodeModels.Input.BoolSelector>
+    <CoreNodeModels.Input.BoolSelector guid="7d3d68d8-91fb-4c48-8bd9-fb3ded391bdf" type="CoreNodeModels.Input.BoolSelector" nickname="Exterior Walls" x="-904.310502282648" y="632.714599078948" isVisible="true" isUpstreamVisible="true" lacing="Disabled" isSelectedInput="False" IsFrozen="false" isPinned="false">
+      <System.Boolean>False</System.Boolean>
+    </CoreNodeModels.Input.BoolSelector>
+    <CoreNodeModels.Input.BoolSelector guid="1a3fa3da-250c-46f8-a1a8-9322d03ee434" type="CoreNodeModels.Input.BoolSelector" nickname="Stairs Formula" x="-904.310502282648" y="722.198729750364" isVisible="true" isUpstreamVisible="true" lacing="Disabled" isSelectedInput="False" IsFrozen="false" isPinned="false">
+      <System.Boolean>False</System.Boolean>
+    </CoreNodeModels.Input.BoolSelector>
+    <CoreNodeModels.Input.BoolSelector guid="dc53e2e1-3314-408b-87c6-1d65558d8764" type="CoreNodeModels.Input.BoolSelector" nickname="Stairs Head Height" x="-904.310502282648" y="811.68286042178" isVisible="true" isUpstreamVisible="true" lacing="Disabled" isSelectedInput="False" IsFrozen="false" isPinned="false">
+      <System.Boolean>False</System.Boolean>
+    </CoreNodeModels.Input.BoolSelector>
+    <CoreNodeModels.Input.DoubleInput guid="acee3773-6f55-4ca3-ae41-a9e44a17f010" type="CoreNodeModels.Input.DoubleInput" nickname="Desired Head Height" x="-789.826315314695" y="892.858338636377" isVisible="true" isUpstreamVisible="true" lacing="Disabled" isSelectedInput="True" IsFrozen="false" isPinned="false">
+      <System.Double value="210" />
+    </CoreNodeModels.Input.DoubleInput>
+    <Dynamo.Graph.Nodes.ZeroTouch.DSVarArgFunction guid="4946032c-61a3-46b8-b19e-b87a871567ad" type="Dynamo.Graph.Nodes.ZeroTouch.DSVarArgFunction" nickname="String.Join" x="-52.7584431211236" y="385.959096770649" isVisible="true" isUpstreamVisible="true" lacing="Shortest" isSelectedInput="False" IsFrozen="false" isPinned="false" assembly="DSCoreNodes.dll" function="DSCore.String.Join@string,string[]" inputcount="9">
+      <PortInfo index="0" default="False" />
+      <PortInfo index="1" default="False" />
+      <PortInfo index="2" default="False" />
+      <PortInfo index="3" default="False" />
+      <PortInfo index="4" default="False" />
+      <PortInfo index="5" default="False" />
+      <PortInfo index="6" default="False" />
+      <PortInfo index="7" default="False" />
+      <PortInfo index="8" default="False" />
+    </Dynamo.Graph.Nodes.ZeroTouch.DSVarArgFunction>
+    <CoreNodeModels.Input.StringInput guid="a1ebe7f1-a63e-4fc7-8636-1113de2ea373" type="CoreNodeModels.Input.StringInput" nickname="Prefix" x="-164.526603254411" y="354.482096939841" isVisible="true" isUpstreamVisible="true" lacing="Disabled" isSelectedInput="False" IsFrozen="false" isPinned="false">
+      <System.String> 
+</System.String>
+      <System.String value=" &#xD;&#xA;" />
+    </CoreNodeModels.Input.StringInput>
+    <CoreNodeModels.Watch guid="5ed79ae1-7db9-4c6b-92d9-2229bba3b212" type="CoreNodeModels.Watch" nickname="Result" x="197.077623118949" y="385.375093395042" isVisible="true" isUpstreamVisible="true" lacing="Disabled" isSelectedInput="False" IsFrozen="false" isPinned="false">
+      <PortInfo index="0" default="False" />
+    </CoreNodeModels.Watch>
+    <PythonNodeModels.PythonNode guid="6c03bb6d-e4ba-4ac3-9113-004c7576e065" type="PythonNodeModels.PythonNode" nickname="Groups" x="-598.625320220398" y="274.62349951221" isVisible="true" isUpstreamVisible="true" lacing="Disabled" isSelectedInput="False" IsFrozen="false" isPinned="false" inputcount="1">
+      <PortInfo index="0" default="False" />
+      <Script>import clr
+
+clr.AddReference("RevitServices")
+import RevitServices
+from RevitServices.Persistence import DocumentManager
+
+clr.AddReference("RevitAPI")
+import Autodesk
+from Autodesk.Revit.DB import *
+
+doc = DocumentManager.Instance.CurrentDBDocument
+
+condition = IN[0]
+
+grouptypes = FilteredElementCollector(doc).OfClass(GroupType).ToElements()
+groups = FilteredElementCollector(doc).OfClass(Group).ToElements()
+
+if condition:
+	count_unused = 0
+	count_unpinned = 0
+	count_excluded = 0
+	for i in grouptypes:
+		#  Check size of GroupSet which given from GroupType
+		if i.Groups.Size == 0:
+			count_unused += 1
+	for i in groups:
+		#  Check for unpinned groups
+		if not i.Pinned:
+			count_unpinned += 1
+		#  Check if group has excluded elements
+		if i.Name.endswith("(members excluded)"):
+			count_excluded += 1
+	
+	#  Output formatting
+	result = ""
+	if count_unused:
+		result += str(count_unused)
+		result += " of "
+		result += str(len(groups))
+		result += " groups are not used."
+	if count_unpinned:
+		if result:
+			result += " "
+		result += str(count_unpinned)
+		result += " of "
+		result += str(len(groups))
+		result += " group instances are not pinned."
+	if count_excluded:
+		if result:
+			result += " "
+		result += str(count_excluded)
+		result += " of "
+		result += str(len(groups))
+		result += " group instances are with excluded elements."
+	
+	#  Output
+	if result:
+		OUT = result
+	else:
+		OUT = "Groups are OK."
+	
+else:
+	OUT = "Groups check is off."</Script>
+    </PythonNodeModels.PythonNode>
+    <PythonNodeModels.PythonNode guid="b7efc02f-ccc4-4a89-bd25-1e6b873d3f8d" type="PythonNodeModels.PythonNode" nickname="Unused Linestyles" x="-598.625320220398" y="364.073095139589" isVisible="true" isUpstreamVisible="true" lacing="Disabled" isSelectedInput="False" IsFrozen="false" isPinned="false" inputcount="1">
+      <PortInfo index="0" default="False" />
+      <Script>import clr
+clr.AddReference('ProtoGeometry')
+from Autodesk.DesignScript.Geometry import *
+clr.AddReference("RevitNodes")
+import Revit
+clr.ImportExtensions(Revit.Elements)
+clr.ImportExtensions(Revit.GeometryConversion)
+clr.AddReference("RevitServices")
+import RevitServices
+from RevitServices.Persistence import DocumentManager
+from RevitServices.Transactions import TransactionManager
+from System.Collections.Generic import *
+
+clr.AddReference("RevitAPI")
+import Autodesk
+from Autodesk.Revit.DB import *
+doc = DocumentManager.Instance.CurrentDBDocument
+uiapp = DocumentManager.Instance.CurrentUIApplication
+app = uiapp.Application
+uidoc=DocumentManager.Instance.CurrentUIApplication.ActiveUIDocument
+
+condition = IN[0]
+
+if condition:
+	#  Selecting used line styles in a project
+	lines_used = FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_Lines).WhereElementIsNotElementType().ToElements()
+	line_styles_used = []
+	for i in lines_used:
+		line_style = i.LineStyle.Id #!!!!!!
+		if not line_style in line_styles_used:
+			line_styles_used.append(line_style)
+
+	#  Selecting all line styles in the project
+	line_styles_all = doc.Settings.Categories.get_Item(BuiltInCategory.OST_Lines).SubCategories
+	line_styles = [i.Id for i in line_styles_all]
+
+	TransactionManager.Instance.EnsureInTransaction(doc)
+
+	count = 0
+	for i in line_styles:
+		if not i in line_styles_used:
+			try:
+				#doc.Delete(i)
+				count += 1
+			except:
+				pass
+
+	TransactionManager.Instance.TransactionTaskDone()
+
+	OUT = str(count) + " line styles are unused"
+
+else:
+	OUT = "Unused linestyles check is off."</Script>
+    </PythonNodeModels.PythonNode>
+    <PythonNodeModels.PythonNode guid="62ce6881-21f5-4b96-b5b9-868400678da7" type="PythonNodeModels.PythonNode" nickname="Rooms" x="-598.625320220398" y="453.522690766969" isVisible="true" isUpstreamVisible="true" lacing="Disabled" isSelectedInput="False" IsFrozen="false" isPinned="false" inputcount="1">
+      <PortInfo index="0" default="False" />
+      <Script>import clr
+
+clr.AddReference("RevitServices")
+import RevitServices
+from RevitServices.Persistence import DocumentManager
+
+clr.AddReference("RevitAPI")
+import Autodesk
+from Autodesk.Revit.DB import *
+from Autodesk.Revit.DB.Architecture import RoomFilter
+
+doc = DocumentManager.Instance.CurrentDBDocument
+
+condition = IN[0]
+
+filter = RoomFilter()
+rooms = FilteredElementCollector(doc).WherePasses(filter).ToElements()
+opt = Options()
+#opt.View = doc.ActiveView
+
+if condition:
+	count_p = 0
+	count_i = 0
+	solids = []
+	for i in rooms:
+		if i.Location is None:
+			count_p += 1
+		else:
+			#  Checking for volumes overlap
+			for obj in i.get_Geometry(opt):
+				if  "Autodesk.Revit.DB.Solid" in str(obj):
+					for s in solids:
+						inter = BooleanOperationsUtils.ExecuteBooleanOperation(obj,s, BooleanOperationsType.Intersect)
+						if inter.Volume:
+							count_i += 1
+					solids.append(obj)
+	
+	if count_p or count_i:
+		OUT = str(count_p) + " rooms are not placed and " + str(count_i) + " of rooms volumes overlap."
+	else:
+		OUT = "Rooms are OK."
+	
+else:
+	OUT = "Rooms check is off."</Script>
+    </PythonNodeModels.PythonNode>
+    <PythonNodeModels.PythonNode guid="6756e4d6-6065-4513-9b2f-2616eacb8022" type="PythonNodeModels.PythonNode" nickname="Warnings" x="-598.625320220398" y="542.972286394349" isVisible="true" isUpstreamVisible="true" lacing="Disabled" isSelectedInput="False" IsFrozen="false" isPinned="false" inputcount="1">
+      <PortInfo index="0" default="False" />
+      <Script>import clr
+
+clr.AddReference("RevitServices")
+import RevitServices
+from RevitServices.Persistence import DocumentManager
+
+clr.AddReference("RevitAPI")
+import Autodesk
+from Autodesk.Revit.DB import *
+
+doc = DocumentManager.Instance.CurrentDBDocument
+
+condition = IN[0]
+
+warnings = []
+if condition:
+	warnings = doc.GetWarnings()
+	OUT = str(len(warnings)) + " warnings in the project"
+else:
+	OUT = "Warnings check is off."</Script>
+    </PythonNodeModels.PythonNode>
+    <PythonNodeModels.PythonNode guid="f2952700-eec5-4131-941a-40139fefad3e" type="PythonNodeModels.PythonNode" nickname="Exterior Walls" x="-598.625320220398" y="632.421882021728" isVisible="true" isUpstreamVisible="true" lacing="Disabled" isSelectedInput="False" IsFrozen="false" isPinned="false" inputcount="1">
+      <PortInfo index="0" default="False" />
+      <Script>import clr
+
+clr.AddReference("RevitServices")
+import RevitServices
+from RevitServices.Persistence import DocumentManager
+from RevitServices.Transactions import TransactionManager
+
+clr.AddReference("RevitAPI")
+import Autodesk
+from Autodesk.Revit.DB import *
+from Autodesk.Revit.Creation import Document as Doc
+
+doc = DocumentManager.Instance.CurrentDBDocument
+
+condition = IN[0]
+
+if condition:
+	v = FilteredElementCollector(doc).OfClass(View3D).ToElements()[0]
+	id = v.GetTypeId()
+	
+	TransactionManager.Instance.EnsureInTransaction(doc)
+	
+	view = View3D.CreateIsometric(doc, id)
+	box = view.GetSectionBox() #!!! CHECK !!!
+	
+	# Get perimeter points and lines
+	p1 = box.Min
+	p2 = XYZ(box.Min.X, box.Max.Y, box.Min.Z)
+	p3 = XYZ(box.Max.X, box.Max.Y, box.Min.Z)
+	p4 = XYZ(box.Max.X, box.Min.Y, box.Min.Z)
+	curve = [Line.CreateBound(p1, p2), Line.CreateBound(p2, p3), Line.CreateBound(p3, p4), Line.CreateBound(p4, p1)]
+	
+	# Get the lowest level
+	levels = FilteredElementCollector(doc).OfClass(Level).ToElements()
+	elev = levels[0].Elevation
+	for i in levels:
+		if i.Elevation &lt; elev:
+			level = i
+			elev = i.Elevation
+	level_id = level.Id
+	
+	# Create perimeter walls
+	w = []
+	for i in curve:
+		w.append(Wall.Create(doc, i, level_id, False))
+
+	for i in w:
+		p = i.get_Parameter(BuiltInParameter.WALL_TOP_OFFSET)
+		p.Set(1000)
+	
+	# Create room
+	point = UV(box.Min.X + 10, box.Min.Y + 10)
+	room = doc.Create.NewRoom(level, point)
+	
+	TransactionManager.Instance.TransactionTaskDone()
+	
+	# Get outer walls
+	walls = []
+	segments = room.GetBoundarySegments(SpatialElementBoundaryOptions())
+	for i in segments:
+		for j in i:
+			element = doc.GetElement(j.ElementId)
+			try:
+				if element.Category.Name == "Walls":
+					walls.append(element)
+			except:
+				pass
+	
+	# Check if walls are Exterior
+	count = 0
+	for i in walls:
+		f = int(i.WallType.Function)
+		if f == 0:
+			count += 1
+	if w[0].WallType.Function == 0:
+		count = count - 4
+	
+	TransactionManager.Instance.EnsureInTransaction(doc)
+	
+	doc.Delete(room.Id)
+	for i in w:
+		doc.Delete(i.Id)
+	
+	TransactionManager.Instance.TransactionTaskDone()
+	
+	# Out
+	if count:
+		OUT = str(count) + " of " + str(len(walls)) + " exterior walls have interior type."
+	else:
+		OUT = "Exterior walls types are OK."
+else:
+	OUT = "Exterior walls check is off."</Script>
+    </PythonNodeModels.PythonNode>
+    <PythonNodeModels.PythonNode guid="72e7c5cc-542e-4427-a766-5b5cbde8781e" type="PythonNodeModels.PythonNode" nickname="Stairs Formula" x="-598.625320220398" y="721.871477649108" isVisible="true" isUpstreamVisible="true" lacing="Disabled" isSelectedInput="False" IsFrozen="false" isPinned="false" inputcount="1">
+      <PortInfo index="0" default="False" />
+      <Script>import clr
+
+clr.AddReference("RevitServices")
+import RevitServices
+from RevitServices.Persistence import DocumentManager
+
+clr.AddReference("RevitAPI")
+import Autodesk
+from Autodesk.Revit.DB import *
+
+doc = DocumentManager.Instance.CurrentDBDocument
+
+condition = IN[0]
+
+if condition:
+	stairs = FilteredElementCollector(doc).WhereElementIsNotElementType().OfCategory(BuiltInCategory.OST_Stairs).ToElements()
+	
+	# Check if stairs steps are right height and depth
+	count = 0
+	for i in stairs:
+		h = i.ActualRiserHeight * 30.48
+		d = i.ActualTreadDepth * 30.48
+		r = 2 * h + d
+		if r &lt; 61 or r &gt; 63:
+			count += 1
+		elif h &lt; 10 or h &gt; 17.5:
+			count += 1
+		elif d &lt; 26:
+			count += 1
+	
+	# Out
+	if count:
+		OUT = str(count) + " of " + str(len(stairs)) + " stairs have bad formula."
+	else:
+		OUT = "Stairs formula are OK."
+else:
+	OUT = "Stairs formula check is off."</Script>
+    </PythonNodeModels.PythonNode>
+    <PythonNodeModels.PythonNode guid="8f68b272-fc38-4118-a190-f51c92d736ea" type="PythonNodeModels.PythonNode" nickname="Stairs Head Height" x="-598.625320220398" y="811.321073276488" isVisible="true" isUpstreamVisible="true" lacing="Disabled" isSelectedInput="False" IsFrozen="false" isPinned="false" inputcount="2">
+      <PortInfo index="0" default="False" />
+      <PortInfo index="1" default="False" />
+      <Script>import clr
+
+clr.AddReference("RevitServices")
+import RevitServices
+from RevitServices.Persistence import DocumentManager
+from RevitServices.Transactions import TransactionManager
+
+clr.AddReference("RevitAPI")
+import Autodesk
+from Autodesk.Revit.DB import *
+
+doc = DocumentManager.Instance.CurrentDBDocument
+
+condition = IN[0]
+height_offset = 10 / 30.48 # Thickness of checking solids
+height = IN[1] / 30.48 - height_offset
+
+opt = Options()
+opt.ComputeReferences = False
+opt.View = doc.ActiveView
+opt.IncludeNonVisibleObjects = True
+
+test = []
+
+if condition:
+	stairs = FilteredElementCollector(doc).WhereElementIsNotElementType().OfCategory(BuiltInCategory.OST_Stairs).ToElements()
+	
+	count_landings = 0
+	count_runs = 0
+	for i in stairs:
+		landings = i.GetStairsLandings()
+		for l in landings:
+			landing = doc.GetElement(l)
+			landing_z = landing.get_BoundingBox(doc.ActiveView).Max.Z
+			landing_elev = landing.BaseElevation
+			landing_p = landing.GetFootprintBoundary()
+			looplist = []
+			looplist.Add(landing_p)
+			# Get extrusion vector, only direction is needed but for sure the point is on 0 point of solid bottom but Z is on solid top
+			#point = landing.get_BoundingBox(doc.ActiveView).Max
+			#extrusion_dir = XYZ(point.X, point.Y, height_offset)
+			extrusion_dir = XYZ(0, 0, 1)
+			# Create solid on "height" height from landing, with solid height of "height_offset"
+			solid_landing = GeometryCreationUtilities.CreateExtrusionGeometry(looplist, extrusion_dir, height_offset)
+			# Transform solid to the needed height
+			t = Transform.CreateTranslation(XYZ(0, 0, height + landing_elev))
+			transformed = SolidUtils.CreateTransformed(solid_landing, t)
+			# Create filter to get intersecting elements
+			filter = ElementIntersectsSolidFilter(transformed)
+			# !!!! filter = ElementIntersectsSolidFilter(transformed)
+			el = FilteredElementCollector(doc).WherePasses(filter).ToElements()
+			count_landings += len(el)
+		runs = i.GetStairsRuns()
+		for r in runs:
+			run = doc.GetElement(r)
+			run_geom = run.get_Geometry(opt)
+			# Get run solid that on top (in run might be second solid for topping)
+			face_arrays = []
+			run_solid = []
+			g_bb_prev = -10000
+			for g in run_geom:
+				if isinstance(g, Solid):
+					if g.Volume &gt; 0:
+						g_bb = g.GetBoundingBox().Max.Z
+						if g_bb &gt; g_bb_prev:
+							face_arrays.append(g.Faces)
+							run_prev = g_bb
+			# Filter faces by normal going up
+			run_faces = []
+			for f_a in face_arrays:
+				for f in f_a: 
+					f_n_x = f.FaceNormal.X
+					f_n_y = f.FaceNormal.Y
+					f_n_z = f.FaceNormal.Z
+					if f_n_x == 0 and f_n_y == 0 and f_n_z == 1:
+						run_faces.append(f)
+			# Making solid and check
+			for r_f in run_faces:
+				run_p = r_f.GetEdgesAsCurveLoops()
+				extrusion_dir = XYZ(0, 0, 1)
+				# Create solid on "height" height from landing, with solid height of "height_offset"
+				solid_run = GeometryCreationUtilities.CreateExtrusionGeometry(run_p, extrusion_dir, height_offset)
+				#test.append(solid_run)
+				# Transform solid to the needed height
+				t_f = Transform.CreateTranslation(XYZ(0, 0, height))
+				transformed = SolidUtils.CreateTransformed(solid_run, t_f)
+				# Create filter to get intersecting elements
+				face_filter = ElementIntersectsSolidFilter(transformed)
+				# !!!! filter = ElementIntersectsSolidFilter(transformed)
+				er = FilteredElementCollector(doc).WherePasses(face_filter).ToElements()
+				count_runs += len(er)
+	
+	# Out
+	if count_landings or count_runs:
+		OUT = str(count_landings) + " of stairs landings and " + str(count_runs) + " of runs have too low head height."
+	else:
+		OUT = "Stairs head heights are OK."
+else:
+	OUT = "Stairs head height check is off."</Script>
+    </PythonNodeModels.PythonNode>
+  </Elements>
+  <Connectors>
+    <Dynamo.Graph.Connectors.ConnectorModel start="2ee147f0-9df7-4425-9123-b959a2442b39" start_index="0" end="4946032c-61a3-46b8-b19e-b87a871567ad" end_index="1" portType="0" />
+    <Dynamo.Graph.Connectors.ConnectorModel start="a9a001a5-7d01-41b1-a7a8-8c99c7fe7aee" start_index="0" end="2ee147f0-9df7-4425-9123-b959a2442b39" end_index="1" portType="0" />
+    <Dynamo.Graph.Connectors.ConnectorModel start="18504c91-cd6b-44d1-a260-acf60b1e2284" start_index="0" end="2ee147f0-9df7-4425-9123-b959a2442b39" end_index="0" portType="0" />
+    <Dynamo.Graph.Connectors.ConnectorModel start="94fb87d6-335d-4745-a192-f83d03be2e65" start_index="0" end="6c03bb6d-e4ba-4ac3-9113-004c7576e065" end_index="0" portType="0" />
+    <Dynamo.Graph.Connectors.ConnectorModel start="6d3eab79-7fb2-46f9-80bd-e17a0f4f5517" start_index="0" end="b7efc02f-ccc4-4a89-bd25-1e6b873d3f8d" end_index="0" portType="0" />
+    <Dynamo.Graph.Connectors.ConnectorModel start="54f5bb07-5305-41a8-b469-ddad24a93d23" start_index="0" end="62ce6881-21f5-4b96-b5b9-868400678da7" end_index="0" portType="0" />
+    <Dynamo.Graph.Connectors.ConnectorModel start="be4209c9-6078-4b6d-816f-723aeb04cf78" start_index="0" end="6756e4d6-6065-4513-9b2f-2616eacb8022" end_index="0" portType="0" />
+    <Dynamo.Graph.Connectors.ConnectorModel start="7d3d68d8-91fb-4c48-8bd9-fb3ded391bdf" start_index="0" end="f2952700-eec5-4131-941a-40139fefad3e" end_index="0" portType="0" />
+    <Dynamo.Graph.Connectors.ConnectorModel start="1a3fa3da-250c-46f8-a1a8-9322d03ee434" start_index="0" end="72e7c5cc-542e-4427-a766-5b5cbde8781e" end_index="0" portType="0" />
+    <Dynamo.Graph.Connectors.ConnectorModel start="dc53e2e1-3314-408b-87c6-1d65558d8764" start_index="0" end="8f68b272-fc38-4118-a190-f51c92d736ea" end_index="0" portType="0" />
+    <Dynamo.Graph.Connectors.ConnectorModel start="acee3773-6f55-4ca3-ae41-a9e44a17f010" start_index="0" end="8f68b272-fc38-4118-a190-f51c92d736ea" end_index="1" portType="0" />
+    <Dynamo.Graph.Connectors.ConnectorModel start="4946032c-61a3-46b8-b19e-b87a871567ad" start_index="0" end="5ed79ae1-7db9-4c6b-92d9-2229bba3b212" end_index="0" portType="0" />
+    <Dynamo.Graph.Connectors.ConnectorModel start="a1ebe7f1-a63e-4fc7-8636-1113de2ea373" start_index="0" end="4946032c-61a3-46b8-b19e-b87a871567ad" end_index="0" portType="0" />
+    <Dynamo.Graph.Connectors.ConnectorModel start="6c03bb6d-e4ba-4ac3-9113-004c7576e065" start_index="0" end="4946032c-61a3-46b8-b19e-b87a871567ad" end_index="2" portType="0" />
+    <Dynamo.Graph.Connectors.ConnectorModel start="b7efc02f-ccc4-4a89-bd25-1e6b873d3f8d" start_index="0" end="4946032c-61a3-46b8-b19e-b87a871567ad" end_index="3" portType="0" />
+    <Dynamo.Graph.Connectors.ConnectorModel start="62ce6881-21f5-4b96-b5b9-868400678da7" start_index="0" end="4946032c-61a3-46b8-b19e-b87a871567ad" end_index="4" portType="0" />
+    <Dynamo.Graph.Connectors.ConnectorModel start="6756e4d6-6065-4513-9b2f-2616eacb8022" start_index="0" end="4946032c-61a3-46b8-b19e-b87a871567ad" end_index="5" portType="0" />
+    <Dynamo.Graph.Connectors.ConnectorModel start="f2952700-eec5-4131-941a-40139fefad3e" start_index="0" end="4946032c-61a3-46b8-b19e-b87a871567ad" end_index="6" portType="0" />
+    <Dynamo.Graph.Connectors.ConnectorModel start="72e7c5cc-542e-4427-a766-5b5cbde8781e" start_index="0" end="4946032c-61a3-46b8-b19e-b87a871567ad" end_index="7" portType="0" />
+    <Dynamo.Graph.Connectors.ConnectorModel start="8f68b272-fc38-4118-a190-f51c92d736ea" start_index="0" end="4946032c-61a3-46b8-b19e-b87a871567ad" end_index="8" portType="0" />
+  </Connectors>
+  <Notes />
+  <Annotations>
+    <Dynamo.Graph.Annotations.AnnotationModel guid="5055c4d8-b015-4d0d-b662-e7951690f0bb" annotationText="Check" left="-914.310502282648" top="139.293945721869" width="155" height="740.388914699911" fontSize="30" InitialTop="185.293945721869" InitialHeight="556.638688193838" TextblockHeight="36" backgrouund="#FFC1D676">
+      <Models ModelGuid="a9a001a5-7d01-41b1-a7a8-8c99c7fe7aee" />
+      <Models ModelGuid="94fb87d6-335d-4745-a192-f83d03be2e65" />
+      <Models ModelGuid="6d3eab79-7fb2-46f9-80bd-e17a0f4f5517" />
+      <Models ModelGuid="54f5bb07-5305-41a8-b469-ddad24a93d23" />
+      <Models ModelGuid="be4209c9-6078-4b6d-816f-723aeb04cf78" />
+      <Models ModelGuid="7d3d68d8-91fb-4c48-8bd9-fb3ded391bdf" />
+      <Models ModelGuid="1a3fa3da-250c-46f8-a1a8-9322d03ee434" />
+      <Models ModelGuid="dc53e2e1-3314-408b-87c6-1d65558d8764" />
+    </Dynamo.Graph.Annotations.AnnotationModel>
+  </Annotations>
+  <Presets />
+  <Cameras>
+    <Camera Name="Background Preview" eyeX="-17" eyeY="24" eyeZ="50" lookX="12" lookY="-13" lookZ="-58" upX="0" upY="1" upZ="0" />
+  </Cameras>
+</Workspace>

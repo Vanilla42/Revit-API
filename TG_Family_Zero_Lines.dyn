@@ -1,0 +1,166 @@
+{
+  "Uuid": "3457b8a5-12f0-46aa-8cd2-c7e33d734685",
+  "IsCustomNode": false,
+  "Description": null,
+  "Name": "TG_Family_Zero_Lines",
+  "ElementResolver": {
+    "ResolutionMap": {}
+  },
+  "Inputs": [],
+  "Outputs": [],
+  "Nodes": [
+    {
+      "ConcreteType": "PythonNodeModels.PythonNode, PythonNodeModels",
+      "NodeType": "PythonScriptNode",
+      "Code": "import clr\r\nclr.AddReference(\"RevitAPI\")\r\nfrom Autodesk.Revit.DB import *\r\nclr.AddReference(\"RevitServices\")\r\nimport RevitServices\r\nfrom RevitServices.Persistence import DocumentManager\r\nfrom RevitServices.Transactions import TransactionManager\r\n\r\nclr.AddReference(\"RevitAPIUI\")\r\nimport Autodesk.Revit.UI\r\nimport Autodesk.Revit.UI.Selection\r\n\r\nclr.AddReference(\"System.Collections\")\r\nfrom System.Collections.Generic import List\r\n\r\ndoc = DocumentManager.Instance.CurrentDBDocument\r\nuidoc = DocumentManager.Instance.CurrentUIApplication.ActiveUIDocument\r\nview = doc.ActiveView\r\n\r\n\r\n\r\nlength = 1\r\n\r\no = XYZ(0, 0, 0)\r\na = XYZ(length, 0, 0)\r\nb = XYZ(0, length, 0)\r\nc = XYZ(0-length, 0, 0)\r\nd = XYZ(0, 0-length, 0)\r\n \r\n \r\nTransactionManager.Instance.EnsureInTransaction(doc)\r\n\t\r\n\r\nl_0 = Line.CreateBound(o, a)\r\nd_0 = doc.FamilyCreate.NewDetailCurve(view, l_0)\r\nl_1 = Line.CreateBound(o, b)\r\nd_1 = doc.FamilyCreate.NewDetailCurve(view, l_1)\r\nl_2 = Line.CreateBound(o, c)\r\nd_2 = doc.FamilyCreate.NewDetailCurve(view, l_2)\r\nl_3 = Line.CreateBound(o, d)\r\nd_3 = doc.FamilyCreate.NewDetailCurve(view, l_3)\r\n\r\n\r\nTransactionManager.Instance.TransactionTaskDone()\r\n\r\n\t\r\nsel_list = List[ElementId]()\r\nsel_list.Add(d_0.Id)\r\nsel_list.Add(d_1.Id)\r\nsel_list.Add(d_2.Id)\r\nsel_list.Add(d_3.Id)\r\n\t\r\nuidoc.Selection.SetElementIds(sel_list)\r\n\t\r\nOUT = \"Center marked with lines.\"",
+      "VariableInputPorts": true,
+      "Id": "327dbf43674f416893779d487d6b9899",
+      "Inputs": [
+        {
+          "Id": "897a240ce7eb483ab1dc200d1727b904",
+          "Name": "IN[0]",
+          "Description": "Input #0",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Outputs": [
+        {
+          "Id": "9c897a41ec2144b980cfae0e9631c415",
+          "Name": "OUT",
+          "Description": "Result of the python script",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Runs an embedded IronPython script."
+    },
+    {
+      "ConcreteType": "CoreNodeModels.Input.BoolSelector, CoreNodeModels",
+      "NodeType": "BooleanInputNode",
+      "InputValue": true,
+      "Id": "4b8355e2f8304ec8ab27e53473bf97df",
+      "Inputs": [],
+      "Outputs": [
+        {
+          "Id": "31cdf79e35df41e39538ba4c4a1bd5a3",
+          "Name": "",
+          "Description": "Boolean",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Selection between a true and false."
+    },
+    {
+      "ConcreteType": "CoreNodeModels.Watch, CoreNodeModels",
+      "NodeType": "ExtensionNode",
+      "Id": "a3e1ae05787c445dacf3401f68437d32",
+      "Inputs": [
+        {
+          "Id": "edcc8171456c48aaaa81f7a64612e1ad",
+          "Name": "",
+          "Description": "Node to evaluate.",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Outputs": [
+        {
+          "Id": "e8b8a612205d483986c72421c56e734d",
+          "Name": "",
+          "Description": "Watch contents.",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Visualize the output of node."
+    }
+  ],
+  "Connectors": [
+    {
+      "Start": "9c897a41ec2144b980cfae0e9631c415",
+      "End": "edcc8171456c48aaaa81f7a64612e1ad",
+      "Id": "1c271008dbf14113ac53ea04819ff6c0"
+    },
+    {
+      "Start": "31cdf79e35df41e39538ba4c4a1bd5a3",
+      "End": "897a240ce7eb483ab1dc200d1727b904",
+      "Id": "01b1e83e770a45ad85bdfee04182ed90"
+    }
+  ],
+  "Dependencies": [],
+  "NodeLibraryDependencies": [],
+  "Bindings": [],
+  "View": {
+    "Dynamo": {
+      "ScaleFactor": 1.0,
+      "HasRunWithoutCrash": true,
+      "IsVisibleInDynamoLibrary": true,
+      "Version": "2.6.1.8786",
+      "RunType": "Manual",
+      "RunPeriod": "1000"
+    },
+    "Camera": {
+      "Name": "Background Preview",
+      "EyeX": -17.0,
+      "EyeY": 24.0,
+      "EyeZ": 50.0,
+      "LookX": 12.0,
+      "LookY": -13.0,
+      "LookZ": -58.0,
+      "UpX": 0.0,
+      "UpY": 1.0,
+      "UpZ": 0.0
+    },
+    "NodeViews": [
+      {
+        "ShowGeometry": true,
+        "Name": "Python Script",
+        "Id": "327dbf43674f416893779d487d6b9899",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "X": 430.5,
+        "Y": 368.0
+      },
+      {
+        "ShowGeometry": true,
+        "Name": "Boolean",
+        "Id": "4b8355e2f8304ec8ab27e53473bf97df",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "X": 239.5,
+        "Y": 371.0
+      },
+      {
+        "ShowGeometry": true,
+        "Name": "Result",
+        "Id": "a3e1ae05787c445dacf3401f68437d32",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "X": 619.5,
+        "Y": 370.0
+      }
+    ],
+    "Annotations": [],
+    "X": 0.0,
+    "Y": 0.0,
+    "Zoom": 1.0
+  }
+}
